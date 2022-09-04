@@ -14,6 +14,7 @@
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_hart.h>
 #include <sbi/sbi_ipi.h>
+#include <sbi/sbi_custom_ipi.h>
 #include <sbi/sbi_system.h>
 #include <sbi/sbi_timer.h>
 #include <sbi/sbi_tlb.h>
@@ -52,6 +53,7 @@ static int sbi_ecall_rfence_handler(unsigned long extid, unsigned long funcid,
 	int ret = 0;
 	unsigned long vmid;
 	struct sbi_tlb_info tlb_info;
+	struct sbi_custom_info custom_info;
 	u32 source_hart = current_hartid();
 
 	if (funcid >= SBI_EXT_RFENCE_REMOTE_HFENCE_GVMA_VMID &&
@@ -100,6 +102,11 @@ static int sbi_ecall_rfence_handler(unsigned long extid, unsigned long funcid,
 		SBI_TLB_INFO_INIT(&tlb_info, regs->a2, regs->a3, regs->a4, 0,
 				  sbi_tlb_local_sfence_vma_asid, source_hart);
 		ret = sbi_tlb_request(regs->a0, regs->a1, &tlb_info);
+		break;
+	case SBI_EXI_RCUSTOM_FN1:
+		SBI_CUSTOM_INFO_INIT(&custom_info, regs->a2, regs->a3, 0, 0,
+				  sbi_custom_ipi_fn1, source_hart);
+		ret = sbi_tlb_request(regs->a0, regs->a1, (struct sbi_tlb_info *)&custom_info);
 		break;
 	default:
 		ret = SBI_ENOTSUPP;

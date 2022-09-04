@@ -15,6 +15,7 @@
 #include <sbi/sbi_fifo.h>
 #include <sbi/sbi_hart.h>
 #include <sbi/sbi_ipi.h>
+#include <sbi/sbi_custom_ipi.h>
 #include <sbi/sbi_scratch.h>
 #include <sbi/sbi_tlb.h>
 #include <sbi/sbi_hfence.h>
@@ -188,6 +189,12 @@ void sbi_tlb_local_fence_i(struct sbi_tlb_info *tinfo)
 	sbi_pmu_ctr_incr_fw(SBI_PMU_FW_FENCE_I_RECVD);
 
 	__asm__ __volatile("fence.i");
+}
+
+void sbi_custom_ipi_fn1(struct sbi_custom_info *cinfo)
+{
+	sbi_printf("hart%d: do custom ipi function!, start = %ld, size = %ld\n",
+			current_hartid(), cinfo->start, cinfo->size);
 }
 
 static void tlb_pmu_incr_fw_ctr(struct sbi_tlb_info *data)
