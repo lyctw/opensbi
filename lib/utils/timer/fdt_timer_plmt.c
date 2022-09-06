@@ -9,6 +9,7 @@
 
 #include <libfdt.h>
 #include <sbi/sbi_error.h>
+#include <sbi/sbi_domain.h>
 #include <sbi_utils/fdt/fdt_helper.h>
 #include <sbi_utils/timer/fdt_timer.h>
 #include <sbi_utils/timer/andes_plmt.h>
@@ -33,6 +34,36 @@ static int plmt_warm_timer_init(void)
 	return 0;
 }
 
+static int andes_plmt_add_regions(unsigned long addr, unsigned long size)
+{
+#define PLMT_ADD_REGION_ALIGN 0x1000
+	int rc;
+	unsigned long pos, end, region_size;
+	struct sbi_domain_memregion reg;
+
+	pos = addr;
+	end = addr + size;
+	while (pos < end) {
+		if (pos & (PLMT_ADD_REGION_ALIGN - 1))
+			region_size = 1UL << sbi_ffs(pos);
+		else
+			region_size = ((end - pos) < PLMT_ADD_REGION_ALIGN)
+					      ? (end - pos)
+					      : PLMT_ADD_REGION_ALIGN;
+
+		sbi_domain_memregion_init(pos, region_size,
+					  SBI_DOMAIN_MEMREGION_MMIO |
+						  SBI_DOMAIN_MEMREGION_READABLE,
+					  &reg);
+		rc = sbi_domain_root_add_memregion(&reg);
+		if (rc)
+			return rc;
+		pos += region_size;
+	}
+
+	return 0;
+}
+
 static int plmt_cold_timer_init(void *fdt, int nodeoff,
 				const struct fdt_match *match)
 {
@@ -52,6 +83,11 @@ static int plmt_cold_timer_init(void *fdt, int nodeoff,
 		return rc;
 
 	plmt_timer.timer_freq = freq;
+
+	/* Add PLMT region to the root domain */
+	rc = andes_plmt_add_regions(plmt_base, plmt.size);
+	if (rc)
+		return rc;
 
 	sbi_timer_set_device(&plmt_timer);
 
