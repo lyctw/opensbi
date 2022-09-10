@@ -11,18 +11,24 @@
 #include <sbi/riscv_asm.h>
 #include <sbi/riscv_io.h>
 #include <sbi/sbi_types.h>
+#include <sbi/sbi_console.h>
 #include "plicsw.h"
 #include "platform.h"
 
 static u32 plicsw_ipi_hart_count;
 static struct plicsw plicsw_dev[AE350_HART_COUNT];
 
+/* #define DEBUG */
 static inline void plicsw_claim(void)
 {
 	u32 source_hart = current_hartid();
 
 	plicsw_dev[source_hart].source_id =
 		readl(plicsw_dev[source_hart].plicsw_claim);
+#ifdef DEBUG
+	sbi_printf("[%s] hart%d is claiming source_id by reading 0x%p and get source_id (pending bit index) = %d\n",
+			__FUNCTION__, source_hart, plicsw_dev[source_hart].plicsw_claim, plicsw_dev[source_hart].source_id);
+#endif
 }
 
 static inline void plicsw_complete(void)
@@ -31,6 +37,10 @@ static inline void plicsw_complete(void)
 	u32 source = plicsw_dev[source_hart].source_id;
 
 	writel(source, plicsw_dev[source_hart].plicsw_claim);
+#ifdef DEBUG
+	sbi_printf("[%s] hart%d has completed interrupt handling and writing source_id (pending bit index) = %d to 0x%p\n",
+			__FUNCTION__, source_hart, source, plicsw_dev[source_hart].plicsw_claim);
+#endif
 }
 
 static inline void plic_sw_pending(u32 target_hart)
@@ -61,6 +71,11 @@ static inline void plic_sw_pending(u32 target_hart)
 	u32 val = 1 << target_offset << per_hart_offset;
 
 	writel(val, plicsw_dev[source_hart].plicsw_pending);
+#ifdef DEBUG
+	sbi_printf("[%s] hart%d is pending target hart%d by writing 0x%x to hart%d's pending reg @ 0x%p\n",
+			__FUNCTION__, source_hart, target_hart,
+			val, source_hart, plicsw_dev[source_hart].plicsw_pending);
+#endif
 }
 
 void plicsw_ipi_send(u32 target_hart)
@@ -102,9 +117,14 @@ int plicsw_cold_ipi_init(unsigned long base, u32 hart_count)
 	/* Setup source priority */
 	uint32_t *priority = (void *)base + PLICSW_PRIORITY_BASE;
 
-	for (int i = 0; i < AE350_HART_COUNT * PLICSW_PENDING_PER_HART; i++)
+	for (int i = 0; i < AE350_HART_COUNT; i++)
 		writel(1, &priority[i]);
 
+#ifdef DEBUG
+	for (int i = 0; i < 8; i++)
+		sbi_printf("[%s] 0x%p\tInterrupt source %d priority\t0x%x\n",
+				__FUNCTION__, &priority[i], i + 1, readl(&priority[i]));
+#endif 
 	/* Setup target enable */
 	uint32_t enable_mask = PLICSW_HART_MASK;
 
@@ -114,6 +134,17 @@ int plicsw_cold_ipi_init(unsigned long base, u32 hart_count)
 		writel(enable_mask, &enable[0]);
 		enable_mask >>= 1;
 	}
+
+#ifdef DEBUG
+	enable_mask = PLICSW_HART_MASK;
+	for(int cntxid = 0; cntxid < 8; cntxid++) {
+		volatile void *plic_ie;
+		plic_ie = (char *)base + PLICSW_ENABLE_BASE
+			+ PLICSW_ENABLE_PER_HART * cntxid;
+		sbi_printf("[%s] 0x%p Interrupt Source #0 to #31 Enables Bits on context %d (hart%d M-mode): \t0x%x\n",
+				__FUNCTION__, plic_ie, cntxid, cntxid, readl(plic_ie));
+	}
+#endif 
 
 	/* Figure-out PLICSW IPI register address */
 	plicsw_ipi_hart_count = hart_count;
@@ -134,6 +165,19 @@ int plicsw_cold_ipi_init(unsigned long base, u32 hart_count)
 			+ PLICSW_CONTEXT_CLAIM
 			+ PLICSW_CONTEXT_PER_HART * hartid;
 	}
+
+#ifdef DEBUG
+	for (u32 hartid = 0; hartid < AE350_HART_COUNT; hartid++) {
+		sbi_printf("[%s] plicsw_dev[%d].source_id: \t0x%x\n",
+				__FUNCTION__, hartid, plicsw_dev[hartid].source_id);
+		sbi_printf("[%s] plicsw_dev[%d].plicsw_pending: \t0x%p\n",
+				__FUNCTION__, hartid, plicsw_dev[hartid].plicsw_pending);
+		sbi_printf("[%s] plicsw_dev[%d].plicsw_enable: \t0x%p\n",
+				__FUNCTION__, hartid, plicsw_dev[hartid].plicsw_enable);
+		sbi_printf("[%s] plicsw_dev[%d].plicsw_claim: \t0x%p\n",
+				__FUNCTION__, hartid, plicsw_dev[hartid].plicsw_claim);
+	}
+#endif
 
 	return 0;
 }
