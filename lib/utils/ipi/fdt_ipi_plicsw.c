@@ -10,6 +10,7 @@
  *   Yu Chien Peter Lin <peterlin@andestech.com>
  */
 
+#include <sbi/sbi_domain.h>
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_ipi.h>
 #include <sbi_utils/fdt/fdt_helper.h>
@@ -30,6 +31,33 @@ static int plicsw_warm_ipi_init(void)
 
 	/* Clear PLICSW IPI */
 	plicsw_ipi_clear(hartid);
+
+	return 0;
+}
+
+static int andes_plicsw_add_regions(unsigned long addr, unsigned long size)
+{
+#define PLICSW_ADD_REGION_ALIGN 0x1000
+	int rc;
+	unsigned long pos, end, region_size;
+	struct sbi_domain_memregion reg;
+
+	pos = addr;
+	end = addr + size;
+	while (pos < end) {
+		if (pos & (PLICSW_ADD_REGION_ALIGN - 1))
+			region_size = 1UL << sbi_ffs(pos);
+		else
+			region_size = ((end - pos) < PLICSW_ADD_REGION_ALIGN)?
+				(end - pos) : PLICSW_ADD_REGION_ALIGN;
+
+		sbi_domain_memregion_init(pos, region_size,
+			SBI_DOMAIN_MEMREGION_MMIO, &reg);
+		rc = sbi_domain_root_add_memregion(&reg);
+		if (rc)
+			return rc;
+		pos += region_size;
+	}
 
 	return 0;
 }
@@ -60,6 +88,11 @@ static int plicsw_cold_ipi_init(void *fdt, int nodeoff,
 		writel(enable_mask, enable + 1);
 		enable_mask <<= 1;
 	}
+
+	/* Add PLICSW region to the root domain */
+	rc = andes_plicsw_add_regions(plicsw.addr, plicsw.size);
+	if (rc)
+		return rc;
 
 	sbi_ipi_set_device(&plicsw_ipi);
 
