@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
+config PLATFORM_KENDRYTE_K510
+	bool
+	select FDT
+	select FDT_SERIAL
+	select FDT_SERIAL_UART8250
+	select FDT_TIMER
+	select FDT_TIMER_PLMT
+	select FDT_IRQCHIP
+	select FDT_IRQCHIP_PLIC
+	select FDT_IPI
+	select FDT_IPI_PLICSW
+	default y
