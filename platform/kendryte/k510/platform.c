@@ -79,8 +79,6 @@ static int kendryte_final_init(bool cold_boot)
 	if (!cold_boot)
 		return 0;
 
-	fdt_reset_init();
-
 	fdt = fdt_get_address();
 	fdt_fixups(fdt);
 	fdt_domain_fixup(fdt);
