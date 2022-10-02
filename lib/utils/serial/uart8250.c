@@ -102,7 +102,8 @@ int uart8250_init(unsigned long base, u32 in_freq, u32 baudrate, u32 reg_shift,
 	uart8250_baudrate  = baudrate;
 
 	if (uart8250_baudrate) {
-		bdiv = (uart8250_in_freq + 8 * uart8250_baudrate) /
+		// bdiv = (uart8250_in_freq + 8 * uart8250_baudrate) /
+		bdiv = uart8250_in_freq /
 		       (16 * uart8250_baudrate);
 	}
 
