@@ -96,41 +96,43 @@ int uart8250_init(unsigned long base, u32 in_freq, u32 baudrate, u32 reg_shift,
 	u16 bdiv = 0;
 
 	uart8250_base      = (volatile char *)base + reg_offset;
-	uart8250_reg_shift = reg_shift;
-	uart8250_reg_width = reg_width;
-	uart8250_in_freq   = in_freq;
-	uart8250_baudrate  = baudrate;
+	uart8250_reg_shift = reg_shift; //=> reg_shift = 0x2
+	uart8250_reg_width = reg_width; //=> reg_width = 0x4
+	uart8250_in_freq   = in_freq;   //=> in_freq = 25000000 (25MHz)
+	uart8250_baudrate  = baudrate;  //=> baud = 115200
 
 	if (uart8250_baudrate) {
-		// bdiv = (uart8250_in_freq + 8 * uart8250_baudrate) /
-		bdiv = uart8250_in_freq /
+		/* bdiv = uart8250_in_freq / */
+		bdiv = (uart8250_in_freq + 8 * uart8250_baudrate) /
 		       (16 * uart8250_baudrate);
 	}
-
+	//=> FAIL: bdiv = ((25000000 + 8 * 115200) / (16 * 115200)) = 13.563 with 0xC0 = 0x09
+	//=> PASS: bdiv = ((25000000 + 8 * 115200) / (16 * 115200)) = 13.563 with 0xC0 = 0x00
+	//=> PASS: bdiv = ((25000000 + 0         ) / (16 * 115200)) = 13.563 with 0xC0 = 0x09 = div(F)
 	/* Disable all interrupts */
-	set_reg(UART_IER_OFFSET, 0x00);
-	/* Enable DLAB */
-	set_reg(UART_LCR_OFFSET, 0x80);
+	set_reg(UART_IER_OFFSET, 0x00); //=> *(u32 *)0x96000004 = 0x00 (only 1byte writable)
+	/* Enable DLAB (DLL & DLM accessable) */ // https://www.lammertbies.nl/comm/info/serial-uart#LCR
+	set_reg(UART_LCR_OFFSET, 0x80); //=> *(u32 *)0x9600000c = 0x80 = 0b10000000 (only 1byte writable)
 
 	if (bdiv) {
 		/* Set divisor low byte */
-		set_reg(UART_DLL_OFFSET, bdiv & 0xff);
+		set_reg(UART_DLL_OFFSET, bdiv & 0xff); //=> *(uint32_t *)0x96000000 = 13 = 0x0d
 		/* Set divisor high byte */
-		set_reg(UART_DLM_OFFSET, (bdiv >> 8) & 0xff);
+		set_reg(UART_DLM_OFFSET, (bdiv >> 8) & 0xff); //=> *(u32 *)0x96000004 = 0x00
 	}
 
 	/* 8 bits, no parity, one stop bit */
-	set_reg(UART_LCR_OFFSET, 0x03);
+	set_reg(UART_LCR_OFFSET, 0x03); //=> *(u32 *)0x9600000c = 0x03
 	/* Enable FIFO */
-	set_reg(UART_FCR_OFFSET, 0x01);
+	set_reg(UART_FCR_OFFSET, 0x01); //=> *(u32 *)0x96000008 = 0x01 (unreadable)
 	/* No modem control DTR RTS */
-	set_reg(UART_MCR_OFFSET, 0x00);
+	set_reg(UART_MCR_OFFSET, 0x00); //=> *(u32 *)0x96000010 = 0x00
 	/* Clear line status */
-	get_reg(UART_LSR_OFFSET);
+	get_reg(UART_LSR_OFFSET);       //=> read *(u32 *)0x96000014
 	/* Read receive buffer */
-	get_reg(UART_RBR_OFFSET);
+	get_reg(UART_RBR_OFFSET);       //=> read *(u32 *)0x96000000
 	/* Set scratchpad */
-	set_reg(UART_SCR_OFFSET, 0x00);
+	set_reg(UART_SCR_OFFSET, 0x00); //=> *(u32 *)0x9600001c = 0x00
 
 	sbi_console_set_device(&uart8250_console);
 
