@@ -63,6 +63,9 @@ unsigned long fw_platform_init(unsigned long arg0, unsigned long arg1,
 
 	platform.hart_count = hart_count;
 
+#define UART_DLR 0x960000c0
+	*(int *)UART_DLR = 0x0;
+
 	/* Return original FDT pointer */
 	return arg1;
 
