@@ -1,0 +1,2 @@
+# CONFIG_SBI_ECALL_IPI is not set
+# CONFIG_SBI_ECALL_RFENCE is not set
