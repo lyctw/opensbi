@@ -159,6 +159,7 @@ void thead_plic_restore(void)
 }
 
 static const struct fdt_match irqchip_plic_match[] = {
+	{ .compatible = "renesas,plic-r9a07g043f" },
 	{ .compatible = "riscv,plic0" },
 	{ .compatible = "sifive,plic-1.0.0" },
 	{ .compatible = "thead,c900-plic",
