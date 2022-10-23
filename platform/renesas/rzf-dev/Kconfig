@@ -4,15 +4,11 @@ config PLATFORM_RENESAS_RZFIVE
 	bool
 	select FDT
 	select FDT_SERIAL
-	select FDT_SERIAL_UART8250
+	select FDT_SERIAL_SCIF
 	select FDT_TIMER
 	select FDT_TIMER_PLMT
-	select FDT_RESET
-	select FDT_RESET_ATCWDT200
 	select FDT_IRQCHIP
 	select FDT_IRQCHIP_PLIC
-	select FDT_IPI
-	select FDT_IPI_PLICSW
 	default y
 
 if PLATFORM_RENESAS_RZFIVE
