@@ -86,10 +86,6 @@ static int rzf_early_init(bool cold_boot)
 
 	sbi_clear_mmiscctl_msa();
 
-	if (cold_boot) {
-		ret = plmt_cold_timer_init(RZF_PLMT_ADDR,
-					   RZF_HART_COUNT);
-	}
 	return ret;
 }
 
