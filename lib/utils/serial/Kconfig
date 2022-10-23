@@ -24,6 +24,11 @@ config FDT_SERIAL_HTIF
 	select SYS_HTIF
 	default n
 
+config FDT_SERIAL_SCIF
+	bool "Renesas UART FDT driver"
+	select SERIAL_SCIF
+	default n
+
 config FDT_SERIAL_SHAKTI
 	bool "Shakti UART FDT driver"
 	select SERIAL_SHAKTI
@@ -57,6 +62,10 @@ config SERIAL_CADENCE
 
 config SERIAL_GAISLER
 	bool "Gaisler UART support"
+	default n
+
+config SERIAL_SCIF
+	bool "Renesas UART support"
 	default n
 
 config SERIAL_SHAKTI
