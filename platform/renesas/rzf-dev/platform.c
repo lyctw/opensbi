@@ -73,12 +73,6 @@ static int rzf_final_init(bool cold_boot)
 	return 0;
 }
 
-/* Initialize the platform console. */
-static int rzf_console_init(void)
-{
-	return scif_init(RZF_SCIF_ADDR,RZF_SCIF_FREQUENCY,RZF_SCIF_BAUDRATE);
-}
-
 /* Platform early initialization. */
 static int rzf_early_init(bool cold_boot)
 {

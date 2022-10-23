@@ -30,10 +30,6 @@
 
 #define RZF_L2C_ADDR			0x13400000
 
-#define RZF_SCIF_ADDR			0x1004B800
-#define RZF_SCIF_FREQUENCY		100000000
-#define RZF_SCIF_BAUDRATE		115200
-
 // #define RZFIVE_MTIMER_FREQ 12000000
 
 /* Configuration Registers */
