@@ -23,6 +23,11 @@
 #define DEFAULT_UART_REG_IO_WIDTH	1
 #define DEFAULT_UART_REG_OFFSET		0
 
+#define DEFAULT_RENESAS_SCIF_FREQ		100000000
+#define DEFAULT_RENESAS_SCIF_BAUD		115200
+#define DEFAULT_RENESAS_SCIF_REG_SHIFT		0
+#define DEFAULT_RENESAS_SCIF_REG_IO_WIDTH	4
+
 #define DEFAULT_SIFIVE_UART_FREQ		0
 #define DEFAULT_SIFIVE_UART_BAUD		115200
 #define DEFAULT_SIFIVE_UART_REG_SHIFT		0
@@ -366,6 +371,24 @@ int fdt_parse_gaisler_uart_node(void *fdt, int nodeoffset,
 	/* For Gaisler APBUART, the reg-shift and reg-io-width are fixed .*/
 	uart->reg_shift	   = DEFAULT_UART_REG_SHIFT;
 	uart->reg_io_width = DEFAULT_GAISLER_UART_REG_IO_WIDTH;
+
+	return 0;
+}
+
+int fdt_parse_renesas_scif_node(void *fdt, int nodeoffset,
+				struct platform_uart_data *uart)
+{
+	int rc;
+
+	rc = fdt_parse_uart_node_common(fdt, nodeoffset, uart,
+					DEFAULT_RENESAS_SCIF_FREQ,
+					DEFAULT_RENESAS_SCIF_BAUD);
+
+	if (rc)
+		return rc;
+
+	uart->reg_shift = DEFAULT_RENESAS_SCIF_REG_SHIFT;
+	uart->reg_io_width = DEFAULT_RENESAS_SCIF_REG_IO_WIDTH;
 
 	return 0;
 }
