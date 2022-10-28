@@ -163,7 +163,8 @@ static const struct fdt_match irqchip_plic_match[] = {
 	{ .compatible = "sifive,plic-1.0.0" },
 	{ .compatible = "thead,c900-plic",
 	  .data = thead_plic_plat_init },
-	{ },
+	{ .compatible = "andestech,nceplic100" },
+	{ /* sentinel */ }
 };
 
 struct fdt_irqchip fdt_irqchip_plic = {
