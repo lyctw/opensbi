@@ -125,14 +125,6 @@ int ae350_hart_suspend(u32 suspend_type)
 			// 1.3 Enable D-cache
 			asm volatile("csrs 0x7ca, 0x2");
 			break;
-		case SBI_HSM_SUSPEND_NON_RET_PLATFORM:
-			// sbi_printf("[%s] hart%d: SBI_HSM_SUSPEND_NON_RET_PLATFORM\n", __func__, hartid);
-			// 456
-			// ae350_plic_save();
-			wfi();
-			// ae350_plic_restore();
-			// sbi_hart_hang();
-			break;
 		default:
 			/*
 			 * Unsupported suspend type, fall through to default
