@@ -16,6 +16,7 @@
 #include <sbi/sbi_ecall_interface.h>
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_hsm.h>
+#include <sbi/sbi_ipi.h>
 //#include <atcsmu.h>
 #include <andes_ae350.h>
 
@@ -58,6 +59,25 @@ void ae350_plic_restore(void)
  * - Clocks should not be disabled until the processor enters WFI mode
  */
 
+#define PCS0_WE_OFF     0x90
+#define PCS0_CTL_OFF    0x94
+#define PCSm_WE_OFF(i)  ((i + 3) * 0x20 + PCS0_WE_OFF)
+#define PCSm_CTL_OFF(i) ((i + 3) * 0x20 + PCS0_CTL_OFF)
+#define SLEEP_CMD       0x3
+#define WAKEUP_CMD      0x8
+#define LIGHTSLEEP_MODE  0
+#define DEEPSLEEP_MODE   1
+#define PCS_CTL_PARAM_OFF 0x3
+#define SMU_RESET_VEC_LO_OFF 0x50
+#define SMU_RESET_VEC_HI_OFF 0x60
+#define SMU_HARTn_RESET_VEC_LO(n) (SMU_RESET_VEC_LO_OFF + (n * 0x4))
+#define SMU_HARTn_RESET_VEC_HI(n) (SMU_RESET_VEC_HI_OFF + (n * 0x4))
+unsigned long smu_base = 0xf0100000;
+volatile char *smu_we_base = NULL;
+volatile char *smu_pcs_ctl_base = NULL;
+unsigned long smu_val = 0;
+unsigned int events = 0;
+
 /**
  * Put the current hart in platform specific suspend (or low-power)
  * state.
@@ -70,30 +90,17 @@ void ae350_plic_restore(void)
  */
 int ae350_hart_suspend(u32 suspend_type)
 {
-#define PCS0_WE_OFF     0x90
-#define PCS0_CTL_OFF    0x94
-#define PCSm_WE_OFF(i)  ((i + 3) * 0x20 + PCS0_WE_OFF)
-#define PCSm_CTL_OFF(i) ((i + 3) * 0x20 + PCS0_CTL_OFF)
-#define SLEEP_CMD       0x3
-#define LIGHTSLEEP_MODE  0
-#define DEEPSLEEP_MODE   1
-#define PCS_CTL_PARAM_OFF 0x3
-	unsigned long smu_base = 0xf0100000;
 	u32 hartid = current_hartid();
-	unsigned int events = 0;
 	switch (suspend_type) {
 		case SBI_HSM_SUSPEND_RET_PLATFORM:
 			// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
-			events = (1 << 9) | (1 << 2);
-			events = (hartid == 0) ? (events | (1 << 28)) : events;
 			events = 0xffffffff;
-			volatile char *smu_we_base = (void *)(smu_base + PCSm_WE_OFF(hartid));
+			smu_we_base = (void *)(smu_base + PCSm_WE_OFF(hartid));
 			writel(events, smu_we_base);
 			// 2. Write the light sleep command to PCSm_CTL
-			unsigned long smu_val = 0;
 			smu_val = SLEEP_CMD | (LIGHTSLEEP_MODE << PCS_CTL_PARAM_OFF); 
 
-			volatile char *smu_pcs_ctl_base = (void *)(smu_base + PCSm_CTL_OFF(hartid));
+			smu_pcs_ctl_base = (void *)(smu_base + PCSm_CTL_OFF(hartid));
 			writel(smu_val, smu_pcs_ctl_base);
 			// 3. Disable all clocks of a core
 			// 3.1 Flush D-cache
@@ -136,24 +143,74 @@ int ae350_hart_suspend(u32 suspend_type)
 	return 0;
 }
 
-/**
- * Perform platform-specific actions to resume from a suspended state.
- *
- * This includes restoring any platform state that was lost during
- * non-retentive suspend.
- */
-void ae350_hart_resume(void)
+/** Start (or power-up) the given hart */
+extern void cpu_dcache_enable(void);
+int ae350_hart_start(u32 hartid, ulong saddr)
 {
-	// sbi_printf("[hart%d/%s] Andes AE350 Non-retentive mode (DeepSleep)\n",
-	// 		current_hartid(), __FUNCTION__);
+	sbi_printf("hart%d should wakeup hart%d from 0x%lx by sending wakeup command\n",
+			current_hartid(), hartid, saddr);
+
+	/* Set wakeup address for sleep hart */
+	ulong wakeup_addr = (ulong)cpu_dcache_enable;
+	sbi_printf("hart%d is writing 0x%lx to 0x%lx\n",
+			current_hartid(), wakeup_addr, smu_base + SMU_HARTn_RESET_VEC_LO(hartid));
+	writel(wakeup_addr, (void *)(smu_base + SMU_HARTn_RESET_VEC_LO(hartid)));
+	writel(wakeup_addr >> 32, (void *)(smu_base + SMU_HARTn_RESET_VEC_HI(hartid)));
+	
+	/* Send wakeup command to the sleep hart */
+	smu_pcs_ctl_base = (void *)(smu_base + PCSm_CTL_OFF(hartid));
+	writel(WAKEUP_CMD, smu_pcs_ctl_base);
+
+	return 0;
+}
+
+/**
+ * Stop (or power-down) the current hart from running. This call
+ * doesn't expect to return if success.
+ */
+int ae350_hart_stop(void)
+{
+	u32 hartid = current_hartid();
+	unsigned long dcache_cm = 0;
+	// 1. Set M-mode software interrupt wakeup events in PCSm_WE
+	//    disable any event, the only way to bring it up is sending
+	//    wakeup command through PCSm_CTL of the sleep hart
+	events = 0x0; //0x20000000;
+    smu_we_base = (void *)(smu_base + PCSm_WE_OFF(hartid));
+	writel(events, smu_we_base);
+	// 2. Write the deep sleep command to PCSm_CTL
+	smu_val = SLEEP_CMD | (DEEPSLEEP_MODE << PCS_CTL_PARAM_OFF);
+	smu_pcs_ctl_base = (void *)(smu_base + PCSm_CTL_OFF(hartid));
+	writel(smu_val, smu_pcs_ctl_base);
+	// 3. Disable all clocks of a core
+	// 3.2 Disable D-cache
+	csr_clear(0x7ca, 0x2); // mcache_ctl.DC_EN = 0 [FIXME]: disable I-cache here?
+	// 3.1 Flush D-cache
+	csr_write(0x7cc, 0x6); // 0x7cc: mcctlcommand, 0x6: L1D_WBINVAL_ALL
+	// 3.3 Disable D-cache coherency
+	csr_clear(0x7ca, 0x80000); // mcache_ctl.DC_COHEN = 0
+	// 3.4 Wait for mcache_ctl.DC_COHSTA to be cleared
+	do {
+		dcache_cm = csr_read(0x7ca) & 0x100000; 
+	} while (dcache_cm);
+
+	wfi();
+
+	/* 
+	 * Should wakeup from warmboot, the deep sleep
+	 * hart's reset vector is set to saddr given
+	 * by ae350_hart_start called by other hart
+	 */
+	sbi_hart_hang();
+	return 0;
 }
 
 static const struct sbi_hsm_device andes_smu = {
-	.name = "andes_smu test",
-	.hart_start = NULL,
-	.hart_stop = NULL,
+	.name = "andes_smu XDD",
+	.hart_start = ae350_hart_start,
+	.hart_stop = ae350_hart_stop,
 	.hart_suspend = ae350_hart_suspend,
-	.hart_resume = ae350_hart_resume,
+	.hart_resume = NULL,
 };
 
 struct smu_data {
