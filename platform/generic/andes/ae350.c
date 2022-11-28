@@ -133,6 +133,8 @@ int ae350_hart_start(u32 hartid, ulong saddr)
  */
 int ae350_hart_stop(void)
 {
+	int rc;
+
 	u32 hartid = current_hartid();
 	// 1. Set M-mode software interrupt wakeup events in PCSm_WE
 	//    disable any event, the only way to bring it up is sending
@@ -157,7 +159,7 @@ int ae350_hart_stop(void)
 }
 
 static const struct sbi_hsm_device andes_smu = {
-	.name = "andes_smu XDD",
+	.name = "andes_smu XDD1",
 	.hart_start = ae350_hart_start,
 	.hart_stop = ae350_hart_stop,
 	.hart_suspend = ae350_hart_suspend,
