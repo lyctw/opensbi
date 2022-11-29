@@ -1,5 +1,3 @@
-// See LICENSE for license details.
-
 #ifndef _RISCV_ATCSMU_H
 #define _RISCV_ATCSMU_H
 
@@ -24,13 +22,14 @@
 #define SMU_RESET_VEC_HI_OFF 0x60
 #define SMU_HARTn_RESET_VEC_LO(n) (SMU_RESET_VEC_LO_OFF + (n * 0x4))
 #define SMU_HARTn_RESET_VEC_HI(n) (SMU_RESET_VEC_HI_OFF + (n * 0x4))
+#define PCS_MAX_NR 8
 
 #ifndef __ASSEMBLER__
 
 struct smu_data {
 	unsigned long addr;
-};
+ };
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* _RISCV_ATCSMU_H */

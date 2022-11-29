@@ -19,11 +19,11 @@
 #include <sbi/sbi_hsm.h>
 #include <sbi/sbi_ipi.h>
 #include <atcsmu.h>
-#include <andes_ae350.h>
 
 struct smu_data smu;
-extern void ae350_enable_clocks(bool deepsleep);
-extern void ae350_disable_clocks(void);
+extern void __ae350_enable_clk(void);
+extern void __ae350_enable_clk_warmboot(void);
+extern void __ae350_disable_clk(void);
 /*
  * Section 20.5: Disable all clocks of a core
  * - Disable D-cache coherency by applying the sequence in Section 20.4.1
@@ -52,21 +52,31 @@ static int smu_set_command(u32 pcs_ctl, u32 hartid)
 	switch (pcs_ctl) {
 	case LIGHT_SLEEP_CMD:
 		if ((pcs_cfg & BIT(PCS_CFG_LIGHT_SLEEP_OFF)) == 0) {
-			sbi_printf("SMU: hart%d (PCS%d) does not support light sleep mode\n",
-					hartid, hartid + 3);
+			sbi_printf(
+				"SMU: hart%d (PCS%d) does not support light sleep mode\n",
+				hartid, hartid + 3);
 			return SBI_ENOTSUPP;
 		}
 	case DEEP_SLEEP_CMD:
 		if ((pcs_cfg & BIT(PCS_CFG_DEEP_SLEEP_OFF)) == 0) {
-			sbi_printf("SMU: hart%d (PCS%d) does not support deep sleep mode\n",
-					hartid, hartid + 3);
+			sbi_printf(
+				"SMU: hart%d (PCS%d) does not support deep sleep mode\n",
+				hartid, hartid + 3);
 			return SBI_ENOTSUPP;
 		}
 	};
-	
+
 	writel(pcs_ctl, (void *)(smu.addr + PCSm_CTL_OFF(hartid)));
 
 	return 0;
+}
+
+static void smu_set_wakeup_addr(ulong wakeup_addr, u32 hartid)
+{
+	writel(wakeup_addr,
+	       (void *)(smu.addr + SMU_HARTn_RESET_VEC_LO(hartid)));
+	writel(wakeup_addr >> 32,
+	       (void *)(smu.addr + SMU_HARTn_RESET_VEC_HI(hartid)));
 }
 
 /**
@@ -84,43 +94,68 @@ int ae350_hart_suspend(u32 suspend_type)
 	u32 hartid = current_hartid();
 	int rc;
 	switch (suspend_type) {
-		case SBI_HSM_SUSPEND_RET_PLATFORM:
-			// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
-			smu_set_wakeup_events(0xffffffff, hartid);
-			// 2. Write the light sleep command to PCSm_CTL
-			rc = smu_set_command(LIGHT_SLEEP_CMD, hartid);
-			if (rc)
-				return SBI_ENOTSUPP;
+	case SBI_HSM_SUSPEND_RET_PLATFORM:
+		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
+		smu_set_wakeup_events(0xffffffff, hartid);
+		// 2. Write the light sleep command to PCSm_CTL
+		rc = smu_set_command(LIGHT_SLEEP_CMD, hartid);
+		if (rc)
+			return SBI_ENOTSUPP;
 
-			// 3. Disable all clocks of a core
-			ae350_disable_clocks();
+		// 3. Disable all clocks of a core
+		__ae350_disable_clk();
 
-			wfi();
-			// 1. Resume: Eable all clocks of a core
-			ae350_enable_clocks(LIGHTSLEEP_MODE);
-			break;
-		default:
-			/*
+		wfi();
+		// 1. Resume: Eable all clocks of a core
+		__ae350_enable_clk();
+		break;
+	case SBI_HSM_SUSPEND_NON_RET_PLATFORM:
+		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
+		smu_set_wakeup_events(0xffffffff, hartid);
+		// 2. Write the light sleep command to PCSm_CTL
+		rc = smu_set_command(DEEP_SLEEP_CMD, hartid);
+		if (rc)
+			return SBI_ENOTSUPP;
+
+		/* Set wakeup address for sleep hart */
+		smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
+
+		// 3. Disable all clocks of a core
+		__ae350_disable_clk();
+
+		wfi();
+	default:
+		/*
 			 * Unsupported suspend type, fall through to default
 			 * retentive suspend
 			 */
-			return SBI_ENOTSUPP;
+		return SBI_ENOTSUPP;
 	}
 
 	return 0;
 }
 
+/**
+ * Perform platform-specific actions to resume from a suspended state.
+ *
+ * This includes restoring any platform state that was lost during
+ * non-retentive suspend.
+ */
+void ae350_hart_resume(void)
+{
+	return;
+}
+
 /** Start (or power-up) the given hart */
 int ae350_hart_start(u32 hartid, ulong saddr)
 {
-	sbi_printf("hart%d should wakeup hart%d from 0x%lx by sending wakeup command\n",
-			current_hartid(), hartid, saddr);
+	sbi_printf(
+		"hart%d should wakeup hart%d from 0x%lx by sending wakeup command\n",
+		current_hartid(), hartid, saddr);
 
 	/* Set wakeup address for sleep hart */
-	ulong wakeup_addr = (ulong)ae350_enable_clocks;
-	writel(wakeup_addr, (void *)(smu.addr + SMU_HARTn_RESET_VEC_LO(hartid)));
-	writel(wakeup_addr >> 32, (void *)(smu.addr + SMU_HARTn_RESET_VEC_HI(hartid)));
-	
+	smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
+
 	/* Send wakeup command to the sleep hart */
 	writel(WAKEUP_CMD, (void *)(smu.addr + PCSm_CTL_OFF(hartid)));
 
@@ -145,7 +180,7 @@ int ae350_hart_stop(void)
 	if (rc)
 		return SBI_ENOTSUPP;
 	// 3. Disable all clocks of a core
-	ae350_disable_clocks();
+	__ae350_disable_clk();
 
 	wfi();
 
@@ -159,21 +194,22 @@ int ae350_hart_stop(void)
 }
 
 static const struct sbi_hsm_device andes_smu = {
-	.name = "andes_smu XDD1",
-	.hart_start = ae350_hart_start,
-	.hart_stop = ae350_hart_stop,
+	.name	      = "andes_smu XDD1",
+	.hart_start   = ae350_hart_start,
+	.hart_stop    = ae350_hart_stop,
 	.hart_suspend = ae350_hart_suspend,
-	.hart_resume = NULL,
+	.hart_resume  = ae350_hart_resume,
 };
 
-static void ae350_hsm_device_init(void) {
+static void ae350_hsm_device_init(void)
+{
 	int rc;
 	void *fdt;
 
 	fdt = fdt_get_address();
 
 	rc = fdt_parse_compat_addr(fdt, (uint64_t *)&smu.addr,
-				  "andestech,atcsmu");
+				   "andestech,atcsmu");
 	if (!rc)
 		sbi_hsm_set_device(&andes_smu);
 }
@@ -188,10 +224,10 @@ static int ae350_final_init(bool cold_boot, const struct fdt_match *match)
 
 static const struct fdt_match andes_ae350_match[] = {
 	{ .compatible = "andestech,ae350" },
-	{ },
+	{},
 };
 
 const struct platform_override andes_ae350 = {
 	.match_table = andes_ae350_match,
-	.final_init = ae350_final_init,
+	.final_init  = ae350_final_init,
 };
