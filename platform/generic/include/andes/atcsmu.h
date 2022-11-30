@@ -28,7 +28,7 @@
 
 struct smu_data {
 	unsigned long addr;
- };
+};
 
 #endif /* __ASSEMBLER__ */
 
