@@ -18,7 +18,8 @@
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_hsm.h>
 #include <sbi/sbi_ipi.h>
-#include <atcsmu.h>
+#include <sbi/sbi_scratch.h>
+#include <andes/atcsmu.h>
 
 struct smu_data smu;
 extern void __ae350_enable_clk(void);
