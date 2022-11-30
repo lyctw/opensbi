@@ -92,8 +92,12 @@ static void smu_set_wakeup_addr(ulong wakeup_addr, u32 hartid)
  */
 int ae350_hart_suspend(u32 suspend_type)
 {
-	u32 hartid = current_hartid();
+	struct sbi_scratch *scratch;
+	u32 hartid;
 	int rc;
+
+	hartid = current_hartid();
+	scratch = sbi_scratch_thishart_ptr();
 	switch (suspend_type) {
 	case SBI_HSM_SUSPEND_RET_PLATFORM:
 		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
