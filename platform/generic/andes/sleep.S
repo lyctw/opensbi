@@ -10,7 +10,7 @@ __ae350_disable_clk:
 	# 3.2 Disable I/D-cache
 	csrc CSR_MCACHECTL, 0x3 # mcache_ctl.DC_EN = 0
 	# 3.3 Disable D-cache coherency
-	li t1, 0x80000 # mcache_ctl.DC_COHEN = 0
+	lui t1, 0x80 # mcache_ctl.DC_COHEN = 0
 	csrc CSR_MCACHECTL, t1
 	# 3.4 Wait for mcache_ctl.DC_COHSTA to be cleared
 check_cm_disabled:
@@ -26,7 +26,7 @@ check_cm_disabled:
 	.global __ae350_enable_clk
 __ae350_enable_clk:
 	/* 1.1 Enable D-cache coherency */
-	li		t1, 0x80000
+	lui		t1, 0x80
 	csrs	CSR_MCACHECTL, t1
 	/* 1.2 Wait for mcache_ctl.DC_COHSTA to be set */
 check_cm_enabled:
