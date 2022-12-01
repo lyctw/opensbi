@@ -20,6 +20,7 @@
 #include <sbi/sbi_ipi.h>
 #include <sbi/sbi_scratch.h>
 #include <andes/atcsmu.h>
+#include <andes/andes45.h>
 
 struct smu_data smu;
 extern void __ae350_enable_clk(void);
@@ -92,12 +93,11 @@ static void smu_set_wakeup_addr(ulong wakeup_addr, u32 hartid)
  */
 int ae350_hart_suspend(u32 suspend_type)
 {
-	struct sbi_scratch *scratch;
 	u32 hartid;
 	int rc;
 
 	hartid = current_hartid();
-	scratch = sbi_scratch_thishart_ptr();
+
 	switch (suspend_type) {
 	case SBI_HSM_SUSPEND_RET_PLATFORM:
 		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
@@ -114,21 +114,6 @@ int ae350_hart_suspend(u32 suspend_type)
 		// 1. Resume: Eable all clocks of a core
 		__ae350_enable_clk();
 		break;
-	case SBI_HSM_SUSPEND_NON_RET_PLATFORM:
-		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
-		smu_set_wakeup_events(0xffffffff, hartid);
-		// 2. Write the light sleep command to PCSm_CTL
-		rc = smu_set_command(DEEP_SLEEP_CMD, hartid);
-		if (rc)
-			return SBI_ENOTSUPP;
-
-		/* Set wakeup address for sleep hart */
-		smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
-
-		// 3. Disable all clocks of a core
-		__ae350_disable_clk();
-
-		wfi();
 	default:
 		/*
 			 * Unsupported suspend type, fall through to default
@@ -140,17 +125,6 @@ int ae350_hart_suspend(u32 suspend_type)
 	return 0;
 }
 
-/**
- * Perform platform-specific actions to resume from a suspended state.
- *
- * This includes restoring any platform state that was lost during
- * non-retentive suspend.
- */
-void ae350_hart_resume(void)
-{
-	return;
-}
-
 /** Start (or power-up) the given hart */
 int ae350_hart_start(u32 hartid, ulong saddr)
 {
@@ -159,7 +133,7 @@ int ae350_hart_start(u32 hartid, ulong saddr)
 		current_hartid(), hartid, saddr);
 
 	/* Set wakeup address for sleep hart */
-	smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
+	//smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
 
 	/* Send wakeup command to the sleep hart */
 	writel(WAKEUP_CMD, (void *)(smu.addr + PCSm_CTL_OFF(hartid)));
@@ -184,6 +158,8 @@ int ae350_hart_stop(void)
 	rc = smu_set_command(DEEP_SLEEP_CMD, hartid);
 	if (rc)
 		return SBI_ENOTSUPP;
+	/* Set wakeup address for sleep hart */
+	smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
 	// 3. Disable all clocks of a core
 	__ae350_disable_clk();
 
@@ -191,19 +167,19 @@ int ae350_hart_stop(void)
 
 	/* 
 	 * Should wakeup from warmboot, the deep sleep
-	 * hart's reset vector is set to saddr given
-	 * by ae350_hart_start
+	 * hart's reset vector is set to __ae350_enable_clk_warmboot
+	 * when ae350_hart_start is called by other hart
 	 */
 	sbi_hart_hang();
 	return 0;
 }
 
 static const struct sbi_hsm_device andes_smu = {
-	.name	      = "andes_smu XDD1",
+	.name	      = "andes_smu XDD2",
 	.hart_start   = ae350_hart_start,
 	.hart_stop    = ae350_hart_stop,
 	.hart_suspend = ae350_hart_suspend,
-	.hart_resume  = ae350_hart_resume,
+	.hart_resume  = NULL,
 };
 
 static void ae350_hsm_device_init(void)
