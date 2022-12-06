@@ -116,7 +116,7 @@ static void sbi_hsm_hart_wait(struct sbi_scratch *scratch, u32 hartid)
 	/* Set MSIE and MEIE bits to receive IPI */
 	csr_set(CSR_MIE, MIP_MSIP | MIP_MEIP);
 
-	/* Wait for hart_add call*/
+	/* Wait for state transition made by sbi_hsm_hart_start() */
 	while (atomic_read(&hdata->state) != SBI_HSM_STATE_START_PENDING) {
 		wfi();
 	};
@@ -217,6 +217,7 @@ int sbi_hsm_init(struct sbi_scratch *scratch, u32 hartid, bool cold_boot)
 
 void __noreturn sbi_hsm_exit(struct sbi_scratch *scratch)
 {
+	int ret;
 	u32 hstate;
 	struct sbi_hsm_data *hdata = sbi_scratch_offset_ptr(scratch,
 							    hart_data_offset);
@@ -228,9 +229,9 @@ void __noreturn sbi_hsm_exit(struct sbi_scratch *scratch)
 		goto fail_exit;
 
 	if (hsm_device_has_hart_hotplug()) {
-		hsm_device_hart_stop();
-		/* It should never reach here */
-		goto fail_exit;
+		ret = hsm_device_hart_stop();
+		if (ret != SBI_ENOTSUPP)
+			goto fail_exit;
 	}
 
 	/**
