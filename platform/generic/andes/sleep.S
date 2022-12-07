@@ -38,7 +38,10 @@ __ae350_enable_clk:
 	/* 1.1 Enable D-cache coherency */
 	lui		t1, 0x80
 	csrs	CSR_MCACHECTL, t1
-	/* Check CM support, mcache_ctl.DC_COHEN is 0 on 25-series */
+	/*
+	* Check CM support
+	* mcache_ctl.DC_COHEN is hard-wired to 0 on 25-series
+	*/
 	csrr	t1, CSR_MCACHECTL
 	srli	t1, t1, 20
 	andi	t1, t1, 0x1
