@@ -19,6 +19,16 @@ check_cm_disabled:
 	andi t1, t1, 0x1
 	bnez t1, check_cm_disabled
 
+	/*
+	* [FIXME]
+	* Insert few cycles for hardware handshaking
+	*/
+	nop
+	nop
+	nop
+	nop
+	nop
+
 	ret
 
 	.section .text, "ax", %progbits
