@@ -57,14 +57,14 @@ static int smu_set_command(u32 pcs_ctl, u32 hartid)
 
 	switch (pcs_ctl) {
 	case LIGHT_SLEEP_CMD:
-		if ((pcs_cfg & BIT(PCS_CFG_LIGHT_SLEEP_OFF)) == 0) {
+		if (EXTRACT_FIELD(pcs_cfg, PCS_CFG_LIGHT_SLEEP) == 0) {
 			sbi_printf(
 				"SMU: hart%d (PCS%d) does not support light sleep mode\n",
 				hartid, hartid + 3);
 			return SBI_ENOTSUPP;
 		}
 	case DEEP_SLEEP_CMD:
-		if ((pcs_cfg & BIT(PCS_CFG_DEEP_SLEEP_OFF)) == 0) {
+		if (EXTRACT_FIELD(pcs_cfg, PCS_CFG_DEEP_SLEEP) == 0) {
 			sbi_printf(
 				"SMU: hart%d (PCS%d) does not support deep sleep mode\n",
 				hartid, hartid + 3);
