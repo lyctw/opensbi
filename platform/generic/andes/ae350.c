@@ -120,10 +120,10 @@ int ae350_hart_suspend(u32 suspend_type)
 		__ae350_enable_clk();
 		break;
 	default:
-		/*
-			 * Unsupported suspend type, fall through to default
-			 * retentive suspend
-			 */
+		/**
+		 * Unsupported suspend type, fall through to default
+		 * retentive suspend
+		 */
 		return SBI_ENOTSUPP;
 	}
 
@@ -136,9 +136,6 @@ int ae350_hart_start(u32 hartid, ulong saddr)
 	sbi_printf(
 		"hart%d should wakeup hart%d from 0x%lx by sending wakeup command\n",
 		current_hartid(), hartid, saddr);
-
-	/* Set wakeup address for sleep hart */
-	//smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
 
 	/* Send wakeup command to the sleep hart */
 	writel_relaxed(WAKEUP_CMD, (void *)(smu.addr + PCSm_CTL_OFFSET(hartid)));
@@ -153,7 +150,6 @@ int ae350_hart_start(u32 hartid, ulong saddr)
 int ae350_hart_stop(void)
 {
 	int rc;
-
 	u32 hartid = current_hartid();
 	// 1. Set M-mode software interrupt wakeup events in PCSm_WE
 	//    disable any event, the only way to bring it up is sending
