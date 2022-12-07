@@ -151,6 +151,18 @@ int ae350_hart_stop(void)
 {
 	int rc;
 	u32 hartid = current_hartid();
+
+	/**
+	 * The hart0 shares power domain with L2-cache,
+	 * so we can not turn it off. Fall through and
+	 * jump to warmboot_addr in this case.
+	 */
+	if(is_andes25() && hartid == 0) {
+		sbi_printf("[%s] I'm 25 hart 0, fall through to generic flow\n",
+				__func__);
+		return SBI_ENOTSUPP;
+	}
+
 	// 1. Set M-mode software interrupt wakeup events in PCSm_WE
 	//    disable any event, the only way to bring it up is sending
 	//    wakeup command through PCSm_CTL of the sleep hart
