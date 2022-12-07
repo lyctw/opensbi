@@ -32,14 +32,14 @@ __ae350_enable_clk:
 	csrr	t1, CSR_MCACHECTL
 	srli	t1, t1, 20
 	andi	t1, t1, 0x1
-	beqz	t1, enable_cache
+	beqz	t1, enable_L1_cache
 	/* 1.2 Wait for mcache_ctl.DC_COHSTA to be set */
 check_cm_enabled:
 	csrr	t1, CSR_MCACHECTL
 	srli	t1, t1, 20
 	andi	t1, t1, 0x1
 	beqz	t1, check_cm_enabled
-enable_cache:
+enable_L1_cache:
 	/* 1.3 enable I/D-cache */
 	csrs	CSR_MCACHECTL, 0x3
 
