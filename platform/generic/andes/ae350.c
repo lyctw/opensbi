@@ -26,6 +26,12 @@ struct smu_data smu;
 extern void __ae350_enable_clk(void);
 extern void __ae350_enable_clk_warmboot(void);
 extern void __ae350_disable_clk(void);
+
+static __always_inline bool is_andes25(void)
+{
+	uintptr_t marchid = csr_read(CSR_MARCHID);
+	return EXTRACT_FIELD(marchid, CSR_MARCHID_MICROID) == 0xa25;
+}
 /*
  * Section 20.5: Disable all clocks of a core
  * - Disable D-cache coherency by applying the sequence in Section 20.4.1
