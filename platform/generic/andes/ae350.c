@@ -42,14 +42,18 @@ extern void __ae350_disable_clk(void);
 
 static void smu_set_wakeup_events(u32 events, u32 hartid)
 {
-	writel(events, (void *)(smu.addr + PCSm_WE_OFF(hartid)));
+	writel_relaxed(events, (void *)(smu.addr + PCSm_WE_OFFSET(hartid)));
 }
 
 static int smu_set_command(u32 pcs_ctl, u32 hartid)
 {
 	u32 pcs_cfg;
 
-	pcs_cfg = readl((void *)(smu.addr + PCSm_CFG_OFF(hartid)));
+	/**
+	 * Fall through generic retentive suspend if the sleep mode
+	 * is not supported
+	 */
+	pcs_cfg = readl_relaxed((void *)(smu.addr + PCSm_CFG_OFFSET(hartid)));
 
 	switch (pcs_ctl) {
 	case LIGHT_SLEEP_CMD:
@@ -68,16 +72,17 @@ static int smu_set_command(u32 pcs_ctl, u32 hartid)
 		}
 	};
 
-	writel(pcs_ctl, (void *)(smu.addr + PCSm_CTL_OFF(hartid)));
+	/* Program the sleep command to PCS_CTL register */
+	writel_relaxed(pcs_ctl, (void *)(smu.addr + PCSm_CTL_OFFSET(hartid)));
 
 	return 0;
 }
 
 static void smu_set_wakeup_addr(ulong wakeup_addr, u32 hartid)
 {
-	writel(wakeup_addr,
+	writel_relaxed(wakeup_addr,
 	       (void *)(smu.addr + SMU_HARTn_RESET_VEC_LO(hartid)));
-	writel(wakeup_addr >> 32,
+	writel_relaxed(wakeup_addr >> 32,
 	       (void *)(smu.addr + SMU_HARTn_RESET_VEC_HI(hartid)));
 }
 
@@ -136,7 +141,7 @@ int ae350_hart_start(u32 hartid, ulong saddr)
 	//smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
 
 	/* Send wakeup command to the sleep hart */
-	writel(WAKEUP_CMD, (void *)(smu.addr + PCSm_CTL_OFF(hartid)));
+	writel_relaxed(WAKEUP_CMD, (void *)(smu.addr + PCSm_CTL_OFFSET(hartid)));
 
 	return 0;
 }
