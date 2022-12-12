@@ -1,4 +1,5 @@
 #include <sbi/riscv_encoding.h>
+#include <sbi/riscv_asm.h>
 #include <andes/andes45.h>
 
 	.section .text, "ax", %progbits
@@ -18,17 +19,7 @@ check_cm_disabled:
 	srli t1, t1, 20
 	andi t1, t1, 0x1
 	bnez t1, check_cm_disabled
-
-	/*
-	* [FIXME]
-	* Insert few cycles for hardware handshaking
-	*/
-	nop
-	nop
-	nop
-	nop
-	nop
-
+ 
 	ret
 
 	.section .text, "ax", %progbits
