@@ -82,18 +82,20 @@ static void __naked smu_set_command(u32 pcs_ctl, u32 hartid)
 	/* Program the sleep command to PCS_CTL register */
 	//writel(pcs_ctl, (void *)(smu.addr + PCSm_CTL_OFFSET(hartid)));
 	asm volatile (
-			/* PCSm_CTL_OFFSET is 0x94 + 0x20 * (hartid + 3) */
-			"	addi t1, a1, 3\n"
-			"	slli t1, t1, 5\n"
-			"	addi t1, t1, 0x94\n"
-			/* read base address stored in smu.addr */
-			"	la t2, smu\n"
-			"	"REG_L" t2, 0(t2)\n"
-			/* smu.addr + PCSm_CTL_OFFSET(hartif) */
-			"	add t1, t1, t2\n"
-			/* write command to PCSm_CTL register */
-			"	sw a0, 0(t1)\n"
-			"	ret\n");
+		/* PCSm_CTL_OFFSET is 0x94 + 0x20 * (hartid + 3) */
+		"	addi t1, a1, 3\n"
+		"	slli t1, t1, 5\n"
+		"	addi t1, t1, 0x94\n"
+		/* read base address stored in smu.addr */
+		"	la t2, smu\n"
+		"	"REG_L" t2, 0(t2)\n"
+		/* smu.addr + PCSm_CTL_OFFSET(hartid) */
+		"	add t1, t1, t2\n"
+		/* write command to PCSm_CTL register */
+		"	sw a0, 0(t1)\n"
+		"	ret\n"
+		::
+		:"t1", "t2");
 }
 
 static void smu_set_wakeup_addr(ulong wakeup_addr, u32 hartid)
@@ -120,16 +122,19 @@ int ae350_hart_suspend(u32 suspend_type)
 
 	hartid = current_hartid();
 
+	if(is_andes25() && hartid == 0)
+		return SBI_ENOTSUPP;
+
 	switch (suspend_type) {
 	case SBI_HSM_SUSPEND_RET_PLATFORM:
 		if(!smu_support_sleep_mode(LIGHTSLEEP_MODE, hartid))
 			return SBI_ENOTSUPP;
 		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
 		smu_set_wakeup_events(0xffffffff, hartid);
-		// 2. Write the light sleep command to PCSm_CTL
-		smu_set_command(LIGHT_SLEEP_CMD, hartid);
 		// 3. Disable all clocks of a core
 		__ae350_disable_clk();
+		// 2. Write the light sleep command to PCSm_CTL
+		smu_set_command(LIGHT_SLEEP_CMD, hartid);
 
 		wfi();
 		// 1. Resume: Eable all clocks of a core
@@ -209,10 +214,10 @@ int ae350_hart_stop(void)
 }
 
 static const struct sbi_hsm_device andes_smu = {
-	.name	      = "andes_smu XDD3",
+	.name	      = "andes_smu XDD",
 	.hart_start   = ae350_hart_start,
-	.hart_stop    = ae350_hart_stop,
-	.hart_suspend = NULL,
+	.hart_stop    = ae350_hart_stop,    // deep sleep
+	.hart_suspend = ae350_hart_suspend, // light sleep
 	.hart_resume  = NULL,
 };
 
