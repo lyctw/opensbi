@@ -93,23 +93,19 @@ static void __naked smu_set_command(u32 pcs_ctl, u32 hartid)
 		"	add t1, t1, t2\n"
 		/* write command to PCSm_CTL register */
 		"	sw a0, 0(t1)\n"
-		"	ret\n"
-		::
-		:"t1", "t2");
+		"	ret\n");
 }
 
 static void smu_wait_clear_command(u32 hartid)
 {
-	u32 ctl_val;
 	ulong pcs_ctl_addr = smu.addr + PCSm_CTL_OFFSET(hartid);
 
 	do {
 		writel(0x0, (void *)pcs_ctl_addr);
-		ctl_val = readl((void *)pcs_ctl_addr);
-	}while (ctl_val);
+	}while (readl((void *)pcs_ctl_addr));
 }
 
-static void smu_set_wakeup_addr(ulong wakeup_addr, u32 hartid)
+static void smu_set_wakeup_address(ulong wakeup_addr, u32 hartid)
 {
 	writel(wakeup_addr,
 	       (void *)(smu.addr + SMU_HARTn_RESET_VEC_LO(hartid)));
@@ -139,16 +135,17 @@ int ae350_hart_suspend(u32 suspend_type)
 			return SBI_ENOTSUPP;
 		// 1. Set proper interrupts in PLIC and wakeup events in PCSm_WE
 		smu_set_wakeup_events(0xffffffff, hartid);
-		// 3. Disable all clocks of a core
-		__ae350_disable_clk();
 		// 2. Write the light sleep command to PCSm_CTL
 		smu_set_command(LIGHT_SLEEP_CMD, hartid);
+		// 3. Disable all clocks of a core
+		__ae350_disable_clk();
 
 		wfi();
 		// 1. Resume: Eable all clocks of a core
 		__ae350_enable_clk();
 
-		smu_wait_clear_command(hartid);
+		if(is_andes25())
+			smu_wait_clear_command(hartid);
 		break;
 	default:
 		/**
@@ -188,7 +185,7 @@ int ae350_hart_stop(void)
 	 * jump to warmboot_addr in this case.
 	 */
 	if(is_andes25() && hartid == 0) {
-		sbi_printf("[%s] I'm 25 hart %d, fall through to generic flow\n",
+		sbi_printf("[%s] AX25MP hart %d, fall through to generic flow\n",
 				__func__, hartid);
 		return SBI_ENOTSUPP;
 	}
@@ -201,15 +198,13 @@ int ae350_hart_stop(void)
 	//    wakeup command through PCSm_CTL of the sleep hart
 	smu_set_wakeup_events(0x0, hartid);
 	// 2. Write the deep sleep command to PCSm_CTL
-//	rc = smu_set_command(DEEP_SLEEP_CMD, hartid);
-//	if (rc)
-//		return SBI_ENOTSUPP;
+	smu_set_command(DEEP_SLEEP_CMD, hartid);
 	/* Set wakeup address for sleep hart */
-	smu_set_wakeup_addr((ulong)__ae350_enable_clk_warmboot, hartid);
+	smu_set_wakeup_address((ulong)__ae350_enable_clk_warmboot, hartid);
 	// 3. Disable all clocks of a core
 	__ae350_disable_clk();
 
-	smu_set_command(DEEP_SLEEP_CMD, hartid);
+	//smu_set_command(DEEP_SLEEP_CMD, hartid);
 
 	wfi();
 
