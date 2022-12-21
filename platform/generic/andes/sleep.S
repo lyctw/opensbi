@@ -4,8 +4,8 @@
 
 	.section .text, "ax", %progbits
 	.align 3
-	.global __ae350_disable_clk
-__ae350_disable_clk:
+	.global __ae350_disable_coherency
+__ae350_disable_coherency:
 	# 3.1 Flush D-cache
 	csrw CSR_MCCTLCOMMAND, 0x6  # 0x7cc: mcctlcommand, 0x6: L1D_WBINVAL_ALL
 	# 3.2 Disable I/D-cache
@@ -24,8 +24,8 @@ check_cm_disabled:
 
 	.section .text, "ax", %progbits
 	.align 3
-	.global __ae350_enable_clk
-__ae350_enable_clk:
+	.global __ae350_enable_coherency
+__ae350_enable_coherency:
 	/* 1.1 Enable D-cache coherency */
 	lui		t1, 0x80
 	csrs	CSR_MCACHECTL, t1
@@ -51,7 +51,7 @@ enable_L1_cache:
 
 	.section .text, "ax", %progbits
 	.align 3
-	.global __ae350_enable_clk_warmboot
-__ae350_enable_clk_warmboot:
-	call ra, __ae350_enable_clk
+	.global __ae350_enable_coherency_warmboot
+__ae350_enable_coherency_warmboot:
+	call ra, __ae350_enable_coherency
 	j _start_warm

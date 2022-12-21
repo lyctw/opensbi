@@ -23,9 +23,9 @@
 #include <andes/andes45.h>
 
 struct smu_data smu;
-extern void __ae350_enable_clk(void);
-extern void __ae350_enable_clk_warmboot(void);
-extern void __ae350_disable_clk(void);
+extern void __ae350_enable_coherency(void);
+extern void __ae350_enable_coherency_warmboot(void);
+extern void __ae350_disable_coherency(void);
 
 static __always_inline bool is_andes25(void)
 {
@@ -138,11 +138,11 @@ int ae350_hart_suspend(u32 suspend_type)
 		// 2. Write the light sleep command to PCSm_CTL
 		smu_set_command(LIGHT_SLEEP_CMD, hartid);
 		// 3. Disable all clocks of a core
-		__ae350_disable_clk();
+		__ae350_disable_coherency();
 
 		wfi();
 		// 1. Resume: Eable all clocks of a core
-		__ae350_enable_clk();
+		__ae350_enable_coherency();
 
 		if(is_andes25())
 			smu_wait_clear_command(hartid);
@@ -200,9 +200,9 @@ int ae350_hart_stop(void)
 	// 2. Write the deep sleep command to PCSm_CTL
 	smu_set_command(DEEP_SLEEP_CMD, hartid);
 	/* Set wakeup address for sleep hart */
-	smu_set_wakeup_address((ulong)__ae350_enable_clk_warmboot, hartid);
+	smu_set_wakeup_address((ulong)__ae350_enable_coherency_warmboot, hartid);
 	// 3. Disable all clocks of a core
-	__ae350_disable_clk();
+	__ae350_disable_coherency();
 
 	//smu_set_command(DEEP_SLEEP_CMD, hartid);
 
@@ -210,7 +210,7 @@ int ae350_hart_stop(void)
 
 	/* 
 	 * Should wakeup from warmboot, the deep sleep
-	 * hart's reset vector is set to __ae350_enable_clk_warmboot
+	 * hart's reset vector is set to __ae350_enable_coherency_warmboot
 	 * when ae350_hart_start is called by other hart
 	 */
 	sbi_hart_hang();
