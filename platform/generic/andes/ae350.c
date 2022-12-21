@@ -161,6 +161,16 @@ int ae350_hart_suspend(u32 suspend_type)
 /** Start (or power-up) the given hart */
 int ae350_hart_start(u32 hartid, ulong saddr)
 {
+	if (is_andes25() && hartid == 0) {
+		sbi_printf(
+			"%s(hartid=%d, saddr=0x%lx): andes25 hart0, skip sending command\n",
+			__func__, hartid, saddr);
+
+		int rc = sbi_ipi_raw_send(hartid);
+		if (rc)
+		    return rc;
+	}
+
 	sbi_printf(
 		"%s(hartid=%d, saddr=0x%lx): hart%d is sending wakeup command to hart%d\n",
 		__func__, hartid, saddr, current_hartid(), hartid);
