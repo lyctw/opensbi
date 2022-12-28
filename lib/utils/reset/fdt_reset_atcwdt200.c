@@ -17,6 +17,8 @@
 #include <sbi_utils/fdt/fdt_helper.h>
 #include <sbi_utils/reset/fdt_reset.h>
 
+#include <andes/atcsmu.h>
+
 #define ATCWDT200_WP_NUM 0x5aa5
 #define WREN_REG 0x18
 #define CTRL_REG 0x10
@@ -41,12 +43,6 @@
 #define CLK_PCLK (1 << 1)
 #define WDT_EN (1 << 0)
 
-#define FLASH_BASE 0x80000000ULL
-#define SMU_RESET_VEC_LO_OFF 0x50
-#define SMU_RESET_VEC_HI_OFF 0x60
-#define SMU_HARTn_RESET_VEC_LO(n) (SMU_RESET_VEC_LO_OFF + (n * 0x4))
-#define SMU_HARTn_RESET_VEC_HI(n) (SMU_RESET_VEC_HI_OFF + (n * 0x4))
-
 static volatile char *wdt_addr;
 static volatile char *smu_addr;
 
@@ -67,8 +63,8 @@ static void ae350_system_reset(u32 type, u32 reason)
 	const struct sbi_platform *plat = sbi_platform_thishart_ptr();
 
 	for (int i = 0; i < sbi_platform_hart_count(plat); i++) {
-		writel(FLASH_BASE, smu_addr + SMU_HARTn_RESET_VEC_LO(i));
-		writel(FLASH_BASE >> 32, smu_addr + SMU_HARTn_RESET_VEC_HI(i));
+		writel(FLASH_BASE, smu_addr + HARTn_RESET_VEC_LO(i));
+		writel(FLASH_BASE >> 32, smu_addr + HARTn_RESET_VEC_HI(i));
 	}
 
 	/* Program WDT control register  */
