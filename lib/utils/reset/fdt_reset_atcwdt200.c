@@ -17,6 +17,8 @@
 #include <sbi_utils/fdt/fdt_helper.h>
 #include <sbi_utils/reset/fdt_reset.h>
 
+#include <andes/atcsmu.h>
+
 #define ATCWDT200_WP_NUM 0x5aa5
 #define WREN_REG 0x18
 #define CTRL_REG 0x10
@@ -40,12 +42,6 @@
 #define INT_EN (1 << 2)
 #define CLK_PCLK (1 << 1)
 #define WDT_EN (1 << 0)
-
-#define FLASH_BASE 0x80000000ULL
-#define SMU_RESET_VEC_LO_OFF 0x50
-#define SMU_RESET_VEC_HI_OFF 0x60
-#define SMU_HARTn_RESET_VEC_LO(n) (SMU_RESET_VEC_LO_OFF + (n * 0x4))
-#define SMU_HARTn_RESET_VEC_HI(n) (SMU_RESET_VEC_HI_OFF + (n * 0x4))
 
 static volatile char *wdt_addr;
 static volatile char *smu_addr;
