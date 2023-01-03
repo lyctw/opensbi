@@ -1,0 +1,44 @@
+#ifndef _RISCV_ATCSMU_H
+#define _RISCV_ATCSMU_H
+
+#define PCS0_WE_OFFSET 0x90
+#define PCSm_WE_OFFSET(i) ((i + 3) * 0x20 + PCS0_WE_OFFSET)
+
+#define PCS0_CTL_OFFSET 0x94
+#define PCSm_CTL_OFFSET(i) ((i + 3) * 0x20 + PCS0_CTL_OFFSET)
+#define PCS_CTL_CMD_SHIFT 0
+#define PCS_CTL_PARAM_SHIFT 3
+#define SLEEP_CMD 0x3
+#define WAKEUP_CMD (0x0 | (1 << PCS_CTL_PARAM_SHIFT))
+#define LIGHTSLEEP_MODE 0
+#define DEEPSLEEP_MODE 1
+#define LIGHT_SLEEP_CMD (SLEEP_CMD | (LIGHTSLEEP_MODE << PCS_CTL_PARAM_SHIFT))
+#define DEEP_SLEEP_CMD (SLEEP_CMD | (DEEPSLEEP_MODE << PCS_CTL_PARAM_SHIFT))
+
+#define PCS0_CFG_OFFSET 0x80
+#define PCSm_CFG_OFFSET(i) ((i + 3) * 0x20 + PCS0_CFG_OFFSET)
+#define PCS_CFG_LIGHT_SLEEP_SHIFT 2
+#define PCS_CFG_LIGHT_SLEEP (1 << PCS_CFG_LIGHT_SLEEP_SHIFT)
+#define PCS_CFG_DEEP_SLEEP_SHIFT 3
+#define PCS_CFG_DEEP_SLEEP (1 << PCS_CFG_DEEP_SLEEP_SHIFT)
+#define RESET_VEC_LO_OFFSET 0x50
+#define RESET_VEC_HI_OFFSET 0x60
+#define RESET_VEC_8CORE_OFFSET 0x1a0
+#define HARTn_RESET_VEC_LO(n)  \
+	(RESET_VEC_LO_OFFSET + \
+	 ((n) < 4 ? 0 : RESET_VEC_8CORE_OFFSET) + ((n) * 0x4))
+#define HARTn_RESET_VEC_HI(n)  \
+	(RESET_VEC_HI_OFFSET + \
+	 ((n) < 4 ? 0 : RESET_VEC_8CORE_OFFSET) + ((n) * 0x4))
+#define PCS_MAX_NR 8
+#define FLASH_BASE 0x80000000ULL
+
+#ifndef __ASSEMBLER__
+
+struct smu_data {
+	unsigned long addr;
+};
+
+#endif /* __ASSEMBLER__ */
+
+#endif /* _RISCV_ATCSMU_H */
