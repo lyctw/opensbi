@@ -49,6 +49,13 @@ struct sbi_hsm_device {
 	 * non-retentive suspend.
 	 */
 	void (*hart_resume)(void);
+
+	/**
+	 * Perform platform-specific actions on non-boot harts at boot-time
+	 *
+	 * For successful secondary boot, the call will return 0.
+	 */
+	int (*hart_secondary_boot)(u32 hartid, ulong saddr);
 };
 
 struct sbi_domain;
