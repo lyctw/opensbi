@@ -152,9 +152,16 @@ static bool hsm_device_has_hart_hotplug(void)
 
 static bool hsm_device_has_hart_secondary_boot(void)
 {
-	if (hsm_dev && hsm_dev->hart_start && !hsm_dev->hart_stop)
+	if (hsm_dev && hsm_dev->hart_secondary_boot)
 		return true;
 	return false;
+}
+
+static int hsm_device_hart_secondary_boot(u32 hartid, ulong saddr)
+{
+	if (hsm_dev && hsm_dev->hart_secondary_boot)
+		return hsm_dev->hart_secondary_boot(hartid, saddr);
+	return SBI_ENOTSUPP;
 }
 
 static int hsm_device_hart_start(u32 hartid, ulong saddr)
@@ -284,16 +291,13 @@ int sbi_hsm_hart_start(struct sbi_scratch *scratch,
 	rscratch->next_addr = saddr;
 	rscratch->next_mode = smode;
 
-	if (hsm_device_has_hart_hotplug() ||
-	   (hsm_device_has_hart_secondary_boot() && !init_count)) {
-		return hsm_device_hart_start(hartid, scratch->warmboot_addr);
-	} else {
-		int rc = sbi_ipi_raw_send(hartid);
-		if (rc)
-		    return rc;
-	}
+	if (hsm_device_has_hart_secondary_boot() && !init_count)
+		return hsm_device_hart_secondary_boot(hartid, scratch->warmboot_addr);
 
-	return 0;
+	if (hsm_device_has_hart_hotplug() && init_count)
+		return hsm_device_hart_start(hartid, scratch->warmboot_addr);
+
+	return sbi_ipi_raw_send(hartid);
 }
 
 int sbi_hsm_hart_stop(struct sbi_scratch *scratch, bool exitnow)
