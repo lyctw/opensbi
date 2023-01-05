@@ -257,7 +257,7 @@ int sbi_hsm_hart_start(struct sbi_scratch *scratch,
 		       u32 hartid, ulong saddr, ulong smode, ulong priv)
 {
 	unsigned long init_count;
-	unsigned int hstate;
+	unsigned int hstate, rc;
 	struct sbi_scratch *rscratch;
 	struct sbi_hsm_data *hdata;
 
@@ -291,13 +291,35 @@ int sbi_hsm_hart_start(struct sbi_scratch *scratch,
 	rscratch->next_addr = saddr;
 	rscratch->next_mode = smode;
 
-	if (hsm_device_has_hart_secondary_boot() && !init_count)
-		return hsm_device_hart_secondary_boot(hartid, scratch->warmboot_addr);
+	if (hsm_device_has_hart_secondary_boot() && !init_count) {
+		rc = hsm_device_hart_secondary_boot(hartid,
+						    scratch->warmboot_addr);
+		if (rc) {
+			sbi_printf(
+				"%s: ERR: HSM device hart_secondary_boot() failed.\n",
+				__func__);
+			return SBI_EFAIL;
+		} else
+			return 0;
+	}
 
-	if (hsm_device_has_hart_hotplug() && init_count)
-		return hsm_device_hart_start(hartid, scratch->warmboot_addr);
+	if (hsm_device_has_hart_hotplug() && init_count) {
+		rc = hsm_device_hart_start(hartid, scratch->warmboot_addr);
+		if (rc) {
+			sbi_printf("%s: ERR: HSM device hart_start() failed.\n",
+				   __func__);
+			return SBI_EFAIL;
+		} else
+			return 0;
+	}
 
-	return sbi_ipi_raw_send(hartid);
+	rc = sbi_ipi_raw_send(hartid);
+	if (rc) {
+		sbi_printf("%s: ERR: IPI device does not exist.\n", __func__);
+		return SBI_EFAIL;
+	}
+
+	return 0;
 }
 
 int sbi_hsm_hart_stop(struct sbi_scratch *scratch, bool exitnow)
