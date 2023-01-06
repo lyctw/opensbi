@@ -43,4 +43,21 @@ bool sbi_system_reset_supported(u32 reset_type, u32 reset_reason);
 
 void __noreturn sbi_system_reset(u32 reset_type, u32 reset_reason);
 
+/** System suspend device */
+struct sbi_system_suspend_device {
+	/** Name of the system suspend device */
+	char name[32];
+
+	/* Check whether sleep type is supported by the device */
+	int (*system_suspend_check)(u32 sleep_type);
+
+	/** Suspend the system */
+	int (*system_suspend)(u32 sleep_type);
+};
+
+const struct sbi_system_suspend_device *sbi_system_suspend_get_device(void);
+void sbi_system_suspend_set_device(struct sbi_system_suspend_device *dev);
+bool sbi_system_suspend_supported(u32 sleep_type);
+int sbi_system_suspend(u32 sleep_type, ulong resume_addr, ulong opaque);
+
 #endif
