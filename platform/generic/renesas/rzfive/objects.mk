@@ -6,3 +6,4 @@
 
 carray-platform_override_modules-$(CONFIG_PLATFORM_RENESAS_RZFIVE) += renesas_rzfive
 platform-objs-$(CONFIG_PLATFORM_RENESAS_RZFIVE) += renesas/rzfive/rzfive.o
+platform-objs-$(CONFIG_ANDES45_PMA) += renesas/rzfive/andes45-pma.o
