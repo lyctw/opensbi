@@ -22,6 +22,7 @@ static int serial_renesas_scif_init(void *fdt, int nodeoff,
 
 static const struct fdt_match serial_renesas_scif_match[] = {
 	{ .compatible = "renesas,scif-r9a07g043" },
+	{ .compatible = "renesas,scif-r9a07g043f" },
 	{ /* sentinel */ }
 };
 
