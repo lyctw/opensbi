@@ -103,7 +103,7 @@ int renesas_rzfive_early_init(bool cold_boot, const struct fdt_match *match)
 	 * region of the PMPU with permissions set to 0x0 so that any
 	 * access to these regions gets blocked.
 	 */
-	return sbi_domain_root_add_memrange(0x30000, 0x20000, 0x1000, 0x0);
+	return 0; //sbi_domain_root_add_memrange(0x30000, 0x20000, 0x1000, 0x0);
 }
 
 static const struct fdt_match renesas_rzfive_match[] = {
