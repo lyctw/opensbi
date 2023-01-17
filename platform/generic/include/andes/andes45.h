@@ -3,8 +3,27 @@
 
 #define CSR_MARCHID_MICROID 0xfff
 
-/* Memory and Miscellaneous Registers */
+/*
+ * Memory and Miscellaneous Registers
+ */
+
 #define CSR_MCACHE_CTL 0x7ca
 #define CSR_MCCTLCOMMAND 0x7cc
+
+/*
+ * CSR Encoding
+ */
+
+#define MCACHE_CTL_IC_EN_OFFSET 0
+#define MCACHE_CTL_IC_EN (1UL << MCACHE_CTL_IC_EN_OFFSET)
+#define MCACHE_CTL_DC_EN_OFFSET 1
+#define MCACHE_CTL_DC_EN (1UL << MCACHE_CTL_DC_EN_OFFSET)
+#define MCACHE_CTL_DC_COHEN_EN_OFFSET 19
+#define MCACHE_CTL_DC_COHEN_EN (1UL << MCACHE_CTL_DC_COHEN_EN_OFFSET)
+#define MCACHE_CTL_DC_COHSTA_OFFSET 20
+#define MCACHE_CTL_DC_COHSTA (1UL << MCACHE_CTL_DC_COHSTA_OFFSET)
+ 
+#define CCTLCOMMAND_L1D_WBINVAL_ALL 0x6
+#define CCTLCOMMAND_L1D_INVAL_ALL 0x17
 
 #endif /* _RISCV_ANDES45_H */

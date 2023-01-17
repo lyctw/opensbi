@@ -1,13 +1,28 @@
 #ifndef _RISCV_AE350_H
 #define _RISCV_AE350_H
 
+#include <sbi/riscv_encoding.h>
+#include <andes/andes45.h>
+
+static __always_inline bool is_andes25(void)
+{
+	ulong marchid = csr_read(CSR_MARCHID);
+	return EXTRACT_FIELD(marchid, CSR_MARCHID_MICROID) == 0xa25;
+}
+
+static __always_inline bool is_andes45(void)
+{
+	ulong marchid = csr_read(CSR_MARCHID);
+	return EXTRACT_FIELD(marchid, CSR_MARCHID_MICROID) == 0xa45;
+}
+
 enum sbi_ext_andes_fid {
 	SBI_EXT_ANDES_GET_MCACHE_CTL_STATUS = 0,
 	SBI_EXT_ANDES_GET_MMISC_CTL_STATUS,
 	SBI_EXT_ANDES_SET_MCACHE_CTL,
 	SBI_EXT_ANDES_SET_MMISC_CTL,
 	SBI_EXT_ANDES_ICACHE_OP,
-	SBI_EXT_ANDES_CACHE_OP,
+	SBI_EXT_ANDES_DCACHE_OP,
 	SBI_EXT_ANDES_L1CACHE_I_PREFETCH,
 	SBI_EXT_ANDES_L1CACHE_D_PREFETCH,
 	SBI_EXT_ANDES_NON_BLOCKING_LOAD_STORE,

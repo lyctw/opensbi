@@ -17,19 +17,15 @@
 #include <sbi/sbi_hsm.h>
 #include <sbi/sbi_ipi.h>
 
-#include <andes/atcsmu.h>
-#include <andes/andes45.h>
 #include <andes/ae350.h>
+#include <andes/andes45.h>
+#include <andes/atcsmu.h>
+#include <andes/cache.h>
 
 struct smu_data smu;
 extern void __ae350_enable_coherency_warmboot(void);
 extern void __ae350_disable_coherency(void);
-
-static __always_inline bool is_andes25(void)
-{
-	ulong marchid = csr_read(CSR_MARCHID);
-	return EXTRACT_FIELD(marchid, CSR_MARCHID_MICROID) == 0xa25;
-}
+extern bool is_andes25();
 
 static void smu_set_wakeup_events(u32 events, u32 hartid)
 {
@@ -155,7 +151,7 @@ static int ae350_vendor_ext_provider(long extid, long funcid,
 	const struct sbi_trap_regs *regs, unsigned long *out_value,
 	struct sbi_trap_info *out_trap, const struct fdt_match *match)
 {
-	int ret;
+	int ret = 0;
 
 	switch (funcid) {
 	case SBI_EXT_ANDES_GET_MCACHE_CTL_STATUS:
@@ -168,7 +164,7 @@ static int ae350_vendor_ext_provider(long extid, long funcid,
 		ret = mcall_dcache_op(regs->a0);
 		break;
 	case SBI_EXT_ANDES_DCACHE_WBINVAL_ALL:
-		ret = mcall_dcache_wbinval_all();
+		mcall_dcache_wbinval_all();
 		break;
 	default:
 		sbi_printf("Unsupported vendor sbi call: %ld\n", funcid);
