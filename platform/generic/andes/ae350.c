@@ -19,6 +19,7 @@
 
 #include <andes/atcsmu.h>
 #include <andes/andes45.h>
+#include <andes/ae350.h>
 
 struct smu_data smu;
 extern void __ae350_enable_coherency_warmboot(void);
@@ -150,6 +151,32 @@ static int ae350_final_init(bool cold_boot, const struct fdt_match *match)
 	return 0;
 }
 
+static int ae350_vendor_ext_provider(long extid, long funcid,
+	const struct sbi_trap_regs *regs, unsigned long *out_value,
+	struct sbi_trap_info *out_trap, const struct fdt_match *match)
+{
+	int ret;
+
+	switch (funcid) {
+	case SBI_EXT_ANDES_GET_MCACHE_CTL_STATUS:
+		*out_value = csr_read(CSR_MCACHE_CTL);
+		break;
+	case SBI_EXT_ANDES_ICACHE_OP:
+		ret = mcall_icache_op(regs->a0);
+		break;
+	case SBI_EXT_ANDES_DCACHE_OP:
+		ret = mcall_dcache_op(regs->a0);
+		break;
+	case SBI_EXT_ANDES_DCACHE_WBINVAL_ALL:
+		ret = mcall_dcache_wbinval_all();
+		break;
+	default:
+		sbi_printf("Unsupported vendor sbi call: %ld\n", funcid);
+		ebreak();
+	}
+	return ret;
+}
+
 static const struct fdt_match andes_ae350_match[] = {
 	{ .compatible = "andestech,ae350" },
 	{ },
@@ -158,4 +185,5 @@ static const struct fdt_match andes_ae350_match[] = {
 const struct platform_override andes_ae350 = {
 	.match_table = andes_ae350_match,
 	.final_init  = ae350_final_init,
+	.vendor_ext_provider = ae350_vendor_ext_provider,
 };
