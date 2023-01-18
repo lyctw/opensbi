@@ -47,12 +47,6 @@ struct smu_data {
 	unsigned long addr;
 };
 
-static __always_inline bool is_andes25(void)
-{
-	ulong marchid = csr_read(CSR_MARCHID);
-	return !!(EXTRACT_FIELD(marchid, CSR_MARCHID_MICROID) == 0xa25);
-}
-
 void smu_set_wakeup_events(u32 events, u32 hartid);
 bool smu_support_sleep_mode(u32 sleep_mode, u32 hartid);
 void smu_set_command(u32 pcs_ctl, u32 hartid);
