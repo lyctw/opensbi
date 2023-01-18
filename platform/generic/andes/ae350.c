@@ -16,6 +16,12 @@
 #include <sbi/sbi_ipi.h>
 #include <sbi/sbi_init.h>
 
+static __always_inline bool is_andes25(void)
+{
+	ulong marchid = csr_read(CSR_MARCHID);
+	return !!(EXTRACT_FIELD(marchid, CSR_MARCHID_MICROID) == 0xa25);
+}
+
 struct smu_data smu;
 extern void __ae350_enable_coherency_warmboot(void);
 extern void __ae350_disable_coherency(void);
