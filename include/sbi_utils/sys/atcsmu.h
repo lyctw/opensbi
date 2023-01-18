@@ -47,9 +47,9 @@ struct smu_data {
 	unsigned long addr;
 };
 
-void smu_set_wakeup_events(u32 events, u32 hartid);
-bool smu_support_sleep_mode(u32 sleep_mode, u32 hartid);
-void smu_set_command(u32 pcs_ctl, u32 hartid);
-void smu_set_reset_vector(ulong wakeup_addr, u32 hartid);
+int smu_set_wakeup_events(struct smu_data *smu, u32 events, u32 hartid);
+bool smu_support_sleep_mode(struct smu_data *smu, u32 sleep_mode, u32 hartid);
+int smu_set_command(struct smu_data *smu, u32 pcs_ctl, u32 hartid);
+int smu_set_reset_vector(struct smu_data *smu, ulong wakeup_addr, u32 hartid);
 
 #endif /* _SYS_ATCSMU_H */
