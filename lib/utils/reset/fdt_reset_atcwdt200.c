@@ -42,8 +42,8 @@
 #define CLK_PCLK (1 << 1)
 #define WDT_EN (1 << 0)
 
-static volatile char *wdt_addr;
-static volatile char *smu_addr;
+static volatile char *wdt_addr = NULL;
+static struct smu_data smu = { 0 };
 
 static int ae350_system_reset_check(u32 type, u32 reason)
 {
@@ -62,13 +62,15 @@ static void ae350_system_reset(u32 type, u32 reason)
 	const struct sbi_platform *plat = sbi_platform_thishart_ptr();
 
 	for (int i = 0; i < sbi_platform_hart_count(plat); i++)
-		smu_set_reset_vector(FLASH_BASE, i);
+		if(smu_set_reset_vector(&smu, FLASH_BASE, i))
+			goto fail;
 
 	/* Program WDT control register  */
 	writew(ATCWDT200_WP_NUM, wdt_addr + WREN_REG);
 	writel(INT_CLK_32768 | INT_EN | RST_CLK_128 | RST_EN | WDT_EN,
 	       wdt_addr + CTRL_REG);
 
+fail:
 	sbi_hart_hang();
 }
 
@@ -97,7 +99,7 @@ static int atcwdt200_reset_init(void *fdt, int nodeoff,
 	if (fdt_parse_compat_addr(fdt, &reg_addr, "andestech,atcsmu"))
 		return SBI_ENODEV;
 
-	smu_addr = (volatile char *)(unsigned long)reg_addr;
+	smu.addr = (unsigned long)reg_addr;
 
 	sbi_system_reset_add_device(&atcwdt200_reset);
 
