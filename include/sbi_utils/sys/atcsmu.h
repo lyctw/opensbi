@@ -32,6 +32,16 @@
 #define PCS_CFG_DEEP_SLEEP_SHIFT	3
 #define PCS_CFG_DEEP_SLEEP		(1 << PCS_CFG_DEEP_SLEEP_SHIFT)
 
+#define PCS0_STATUS_OFFSET		0x98
+#define PCSm_STATUS_OFFSET(i)	((i + 3) * 0x20 + PCS0_STATUS_OFFSET)
+#define PCS_STATUS_PD_TYPE 7
+#define PD_TYPE_ACTIVE     0x0
+#define PD_TYPE_SLEEP      0x2
+#define PCS_STATUS_PD_STATUS_SHIFT 3
+#define PCS_STATUS_PD_STATUS       (31 << PCS_STATUS_PD_STATUS_SHIFT)
+#define PD_STATUS_LIGHT_SLEEP      (0x0 << PCS_STATUS_PD_STATUS_SHIFT)
+#define PD_STATUS_DEEP_SLEEP       (0x10 << PCS_STATUS_PD_STATUS_SHIFT)
+
 #define RESET_VEC_LO_OFFSET	0x50
 #define RESET_VEC_HI_OFFSET	0x60
 #define RESET_VEC_8CORE_OFFSET	0x1a0
@@ -55,5 +65,6 @@ int smu_set_wakeup_events(struct smu_data *smu, u32 events, u32 hartid);
 bool smu_support_sleep_mode(struct smu_data *smu, u32 sleep_mode, u32 hartid);
 int smu_set_command(struct smu_data *smu, u32 pcs_ctl, u32 hartid);
 int smu_set_reset_vector(struct smu_data *smu, ulong wakeup_addr, u32 hartid);
+void smu_check_pcs_status(struct smu_data *smu, u32 last_hart, bool sleep_mode);
 
 #endif /* _SYS_ATCSMU_H */

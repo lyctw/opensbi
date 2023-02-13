@@ -12,11 +12,14 @@
 #include <sbi/sbi_console.h>
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_bitops.h>
+#include <sbi/sbi_platform.h>
 
 inline int smu_set_wakeup_events(struct smu_data *smu, u32 events, u32 hartid)
 {
 	if (smu) {
 		writel(events, (void *)(smu->addr + PCSm_WE_OFFSET(hartid)));
+		sbi_printf("%s(): SMU_PCS%d_WE_OFFSET: %#x\n", __func__, hartid + 3,
+				readl((void *)(smu->addr + PCSm_WE_OFFSET(hartid))));
 		return 0;
 	} else
 		return SBI_EINVAL;
@@ -60,6 +63,8 @@ inline int smu_set_command(struct smu_data *smu, u32 pcs_ctl, u32 hartid)
 {
 	if (smu) {
 		writel(pcs_ctl, (void *)(smu->addr + PCSm_CTL_OFFSET(hartid)));
+		sbi_printf("%s(): SMU_PCS%d_CTL_OFFSET: %#x\n", __func__, hartid + 3,
+				readl((void *)(smu->addr + PCSm_CTL_OFFSET(hartid))));
 		return 0;
 	} else
 		return SBI_EINVAL;
@@ -89,4 +94,25 @@ inline int smu_set_reset_vector(struct smu_data *smu, ulong wakeup_addr,
 		return SBI_EFAIL;
 	} else
 		return 0;
+}
+
+void smu_check_pcs_status(struct smu_data *smu, u32 last_hart, bool sleep_mode)
+{
+	const struct sbi_platform *plat = sbi_platform_thishart_ptr();
+	u32 pcs_status;
+	u8  pcs_status_sleep_pd = PD_TYPE_SLEEP |
+		((sleep_mode) ? PD_STATUS_DEEP_SLEEP :
+		                PD_STATUS_LIGHT_SLEEP);
+	for (int i = 0; i < sbi_platform_hart_count(plat); i++) {
+		if (i == last_hart)
+			continue;
+		do {
+			pcs_status = readl((void *)(smu->addr + PCSm_STATUS_OFFSET(i)));
+			sbi_printf("CHECKING %s(): checking hart%d pcs_status: %#x (PD_TYPE: %#x, PD_STATUS: %#x)\n",
+					__func__, i, pcs_status, EXTRACT_FIELD(pcs_status, PCS_STATUS_PD_TYPE),
+					EXTRACT_FIELD(pcs_status, PCS_STATUS_PD_STATUS));
+		}
+		while(EXTRACT_FIELD(pcs_status, (PCS_STATUS_PD_TYPE | PCS_STATUS_PD_STATUS)) !=
+				pcs_status_sleep_pd);
+	}
 }

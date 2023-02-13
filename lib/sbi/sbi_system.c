@@ -191,10 +191,11 @@ int sbi_system_suspend(u32 sleep_type, ulong resume_addr, ulong opaque)
 
 	/* Suspend */
 	ret = suspend_dev->system_suspend(sleep_type);
+	if (!sbi_hsm_hart_change_state(scratch, SBI_HSM_STATE_SUSPENDED,
+					   SBI_HSM_STATE_STARTED))
+		sbi_hart_hang();
+
 	if (ret != SBI_OK) {
-		if (!sbi_hsm_hart_change_state(scratch, SBI_HSM_STATE_SUSPENDED,
-					       SBI_HSM_STATE_STARTED))
-			sbi_hart_hang();
 		return ret;
 	}
 

@@ -16,10 +16,13 @@
 #include <sbi/sbi_hsm.h>
 #include <sbi/sbi_ipi.h>
 #include <sbi/sbi_init.h>
+#include <sbi/sbi_console.h> // !!! DROP!!!
+#include <sbi/sbi_system.h>
 #include <andes/andes45.h>
 
 static struct smu_data smu = { 0 };
 extern void __ae350_enable_coherency_warmboot(void);
+extern void __ae350_enable_coherency(void);
 extern void __ae350_disable_coherency(void);
 
 static __always_inline bool is_andes25(void)
@@ -30,6 +33,8 @@ static __always_inline bool is_andes25(void)
 
 static int ae350_hart_start(u32 hartid, ulong saddr)
 {
+	sbi_printf("%s(): hart%d is reuqesting start to hart%d\n", __func__, current_hartid(), hartid);
+
 	/* Don't send wakeup command at boot-time */
 	if (!sbi_init_count(hartid) || (is_andes25() && hartid == 0))
 		return sbi_ipi_raw_send(hartid);
@@ -42,6 +47,28 @@ static int ae350_hart_start(u32 hartid, ulong saddr)
 
 static int ae350_hart_stop(void)
 {
+	struct sbi_scratch *scratch = sbi_scratch_thishart_ptr();
+	void (*jump_warmboot)(void) = (void (*)(void))scratch->warmboot_addr;
+
+	u32 hartid = current_hartid();
+	sbi_printf("%s(): hart%d\n", __func__, current_hartid());
+	smu_set_wakeup_events(&smu, 0x0, hartid);
+	smu_set_command(&smu, LIGHT_SLEEP_CMD, hartid);
+//	smu_set_reset_vector(&smu, (ulong)__ae350_enable_coherency_warmboot,
+//			       hartid);
+
+	__ae350_disable_coherency();
+	
+	wfi();
+
+	__ae350_enable_coherency();
+
+	jump_warmboot();
+
+	sbi_panic("Should not panic here\n");
+	return SBI_ENOTSUPP;
+
+#if 0
 	int rc;
 	u32 hartid = current_hartid();
 
@@ -78,6 +105,7 @@ fail:
 	/* It should never reach here */
 	sbi_hart_hang();
 	return 0;
+#endif
 }
 
 static const struct sbi_hsm_device andes_smu = {
@@ -86,25 +114,76 @@ static const struct sbi_hsm_device andes_smu = {
 	.hart_stop    = ae350_hart_stop,
 };
 
-static void ae350_hsm_device_init(void)
+//static void ae350_hsm_device_init(void)
+//{
+//	int rc;
+//	void *fdt;
+//
+//	fdt = fdt_get_address();
+//
+//	rc = fdt_parse_compat_addr(fdt, (uint64_t *)&smu.addr,
+//				   "andestech,atcsmu");
+//}
+
+static int ae350_system_suspend_test_check(u32 sleep_type)
+{
+	return sleep_type == SBI_SUSP_SLEEP_TYPE_SUSPEND;
+}
+
+static int ae350_system_suspend_test_suspend(u32 sleep_type)
+{
+//#define WAKEUP_EVENTS (1 << 9) // UART2
+#define WAKEUP_EVENTS 0xffffffff
+	u32 hartid;
+//	int rc;
+
+	if (sleep_type != SBI_SUSP_SLEEP_TYPE_SUSPEND)
+		return SBI_EINVAL;
+
+	hartid = current_hartid();
+	smu_check_pcs_status(&smu, hartid, LIGHTSLEEP_MODE); // block if other hart still active
+	smu_set_wakeup_events(&smu, WAKEUP_EVENTS, hartid);
+	smu_set_command(&smu, LIGHT_SLEEP_CMD, hartid);
+//	rc = smu_set_reset_vector(&smu, (ulong)__ae350_enable_coherency_warmboot,
+//			       hartid);
+//	if (rc)
+//		goto fail;
+
+	__ae350_disable_coherency();
+
+  /* Wait for interrupt */
+	wfi();
+
+	__ae350_enable_coherency();
+
+	return SBI_OK;
+
+//fail:
+//	sbi_panic("ERROR %s(): failed to set reset vector\n", __func__);
+}
+
+static struct sbi_system_suspend_device ae350_system_suspend_test = {
+	.name = "ae350_suspend_test",
+	.system_suspend_check = ae350_system_suspend_test_check,
+	.system_suspend = ae350_system_suspend_test_suspend,
+};
+
+static int ae350_final_init(bool cold_boot, const struct fdt_match *match)
 {
 	int rc;
 	void *fdt;
 
-	fdt = fdt_get_address();
+	if (cold_boot) {
+		fdt = fdt_get_address();
 
-	rc = fdt_parse_compat_addr(fdt, (uint64_t *)&smu.addr,
-				   "andestech,atcsmu");
-
-	if (!rc) {
+		rc = fdt_parse_compat_addr(fdt, (uint64_t *)&smu.addr,
+					   "andestech,atcsmu");
+		if(rc)
+			sbi_panic("Fail to parse atcsmu\n");
 		sbi_hsm_set_device(&andes_smu);
+		//ae350_hsm_device_init();
+		sbi_system_suspend_set_device(&ae350_system_suspend_test);
 	}
-}
-
-static int ae350_final_init(bool cold_boot, const struct fdt_match *match)
-{
-	if (cold_boot)
-		ae350_hsm_device_init();
 
 	return 0;
 }

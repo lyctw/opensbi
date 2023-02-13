@@ -341,6 +341,7 @@ void __sbi_hsm_suspend_non_ret_save(struct sbi_scratch *scratch)
 	struct sbi_hsm_data *hdata = sbi_scratch_offset_ptr(scratch,
 							    hart_data_offset);
 
+	sbi_printf("AAAAAAA %s() hart%d\n", __func__, current_hartid());
 	/*
 	 * We will be resuming in warm-boot path so the MIE and MIP CSRs
 	 * will be back to initial state. It is possible that HART has
@@ -357,6 +358,15 @@ void __sbi_hsm_suspend_non_ret_save(struct sbi_scratch *scratch)
 
 	hdata->saved_mie = csr_read(CSR_MIE);
 	hdata->saved_mip = csr_read(CSR_MIP) & (MIP_SSIP | MIP_STIP);
+
+	// mstatus: 0xa00000820 (SPIE | MPP=1 | UXL=2 | SXL=1)
+	// mie: 0x22a
+	// mip: 0xa0 & (1 << 5) | (1 << 1)
+	//    = 0xa0 (M-timer, S-timer) & 0x22 (S-software, S-timer) = 0x20 (S-timer)
+	//sbi_printf("AAAAAAA %s() hart%d, mstatus: %#lx, saved_mie: %#lx, mie: %#lx\n",
+	//		__func__, current_hartid(), csr_read(CSR_MSTATUS), hdata->saved_mie, csr_read(CSR_MIE));
+	//sbi_printf("AAAAAAA %s() hart%d, saved_mip: %#lx, mip: %#lx\n",
+	//		__func__, current_hartid(), hdata->saved_mip, csr_read(CSR_MIP));
 }
 
 static void __sbi_hsm_suspend_non_ret_restore(struct sbi_scratch *scratch)
@@ -364,6 +374,7 @@ static void __sbi_hsm_suspend_non_ret_restore(struct sbi_scratch *scratch)
 	struct sbi_hsm_data *hdata = sbi_scratch_offset_ptr(scratch,
 							    hart_data_offset);
 
+	sbi_printf("BBBBBBB %s() hart%d\n", __func__, current_hartid());
 	csr_write(CSR_MIE, hdata->saved_mie);
 	csr_write(CSR_MIP, (hdata->saved_mip & (MIP_SSIP | MIP_STIP)));
 }
