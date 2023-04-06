@@ -5,7 +5,7 @@
  */
 
 #include <andes/andes45_pma.h>
-#include <andes/andes45_sbi.h>
+#include <andes/andes_sbi.h>
 #include <platform_override.h>
 #include <sbi/sbi_domain.h>
 #include <sbi_utils/fdt/fdt_helper.h>
@@ -56,5 +56,5 @@ const struct platform_override renesas_rzfive = {
 	.match_table = renesas_rzfive_match,
 	.early_init = renesas_rzfive_early_init,
 	.final_init = renesas_rzfive_final_init,
-	.vendor_ext_provider = andes45_sbi_vendor_ext_provider,
+	.vendor_ext_provider = andes_sbi_vendor_ext_provider,
 };

@@ -4,7 +4,7 @@
  *
  */
 #include <andes/andes45.h>
-#include <andes/andes45_sbi.h>
+#include <andes/andes_sbi.h>
 #include <sbi/riscv_asm.h>
 #include <sbi/sbi_error.h>
 
@@ -32,7 +32,7 @@ static bool andes45_apply_iocp_sw_workaround(void)
 	return andes45_cache_controllable() & andes45_iocp_disabled();
 }
 
-int andes45_sbi_vendor_ext_provider(long funcid,
+int andes_sbi_vendor_ext_provider(long funcid,
 				    const struct sbi_trap_regs *regs,
 				    unsigned long *out_value,
 				    struct sbi_trap_info *out_trap,
