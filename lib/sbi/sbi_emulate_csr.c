@@ -60,6 +60,9 @@ int sbi_emulate_csr_read(int csr_num, struct sbi_trap_regs *regs,
 		else
 			ret = SBI_ENOTSUPP;
 		break;
+	case CSR_SATP:
+		*csr_val = csr_read(CSR_SATP);
+		break;
 	case CSR_CYCLE:
 		if (!hpm_allowed(csr_num - CSR_CYCLE, prev_mode, virt))
 			return SBI_ENOTSUPP;

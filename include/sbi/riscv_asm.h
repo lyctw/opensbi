@@ -32,6 +32,30 @@
 #define PAGE_SIZE	(_AC(1, UL) << PAGE_SHIFT)
 #define PAGE_MASK	(~(PAGE_SIZE - 1))
 
+#ifndef __ASSEMBLER__
+#include <sbi/sbi_types.h>
+
+typedef uint64_t pte_t;
+typedef uint64_t *pagetable_t;
+
+#define VPN_MASK		_AC(0x1FF, UL) // 9 bits VPN on Sv39/48/57
+#define VPN_WIDTH		9
+#define VPN_SHIFT(level)	(PAGE_SHIFT + (VPN_WIDTH * (level)))
+#define VPN(level, va)		((((virtual_addr_t)va) >> VPN_SHIFT(level)) & VPN_MASK) // page index
+
+#define PTE_MASK GENMASK(7, 0)
+#define PTE_V (1L << 0)
+#define PTE_R (1L << 1)
+#define PTE_W (1L << 2)
+#define PTE_X (1L << 3)
+#define PTE_U (1L << 4)
+#define PTE_G (1L << 5)
+#define PTE_A (1L << 6)
+#define PTE_D (1L << 7)
+
+#define PTE2PA(pte) (((pte & GENMASK(53, 10)) >> 10) << PAGE_SHIFT)
+#endif
+
 #define REG_L		__REG_SEL(ld, lw)
 #define REG_S		__REG_SEL(sd, sw)
 #define SZREG		__REG_SEL(8, 4)
